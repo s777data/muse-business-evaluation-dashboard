@@ -1,0 +1,90 @@
+# Scoring rubric — ALL weights and anchor points live here, never in code.
+# Each sub-score maps a metric value to 0-10 by piecewise-linear interpolation
+# between [value, score] anchor pairs. Values beyond the ends are clamped.
+# Margin LEVEL sub-scores deliberately use the 5-year MEDIAN (through-cycle)
+# rather than the latest year, so a cyclical peak cannot max the score.
+# This is a generic method applied identically to every ticker, not tuned per name.
+
+business:
+  revenue_growth_latest_pct:
+    weight: 0.15
+    anchors: [[-20, 0], [0, 3], [25, 6], [75, 8.5], [150, 10]]
+  revenue_cagr_5y_pct:
+    weight: 0.10
+    anchors: [[-5, 1], [0, 3], [10, 5.5], [20, 7.5], [30, 9], [40, 10]]
+  gross_margin_median_5y_pct:
+    weight: 0.20
+    anchors: [[0, 0], [15, 2.5], [30, 4.5], [45, 6.5], [60, 8.5], [75, 10]]
+  operating_margin_median_5y_pct:
+    weight: 0.15
+    anchors: [[-10, 0], [0, 3], [10, 5], [20, 7], [35, 9], [50, 10]]
+  fcf_margin_median_5y_pct:
+    weight: 0.15
+    anchors: [[-10, 0], [0, 2.5], [10, 5.5], [20, 8], [30, 10]]
+  net_cash_to_revenue:
+    weight: 0.15
+    anchors: [[-1.0, 0], [-0.25, 2], [0, 4.5], [0.25, 6.5], [0.5, 8], [1.0, 10]]
+  gross_margin_stdev_5y_pts:
+    weight: 0.10
+    anchors: [[0, 10], [5, 8], [10, 6], [20, 3.5], [30, 1.5], [40, 0]]
+
+value:
+  trailing_pe:
+    weight: 0.20
+    anchors: [[3, 10], [5, 10], [10, 8], [15, 6.5], [25, 4.5], [40, 2.5], [60, 1]]
+  price_to_sales:
+    weight: 0.15
+    anchors: [[0.5, 10], [1, 9], [2, 7.5], [4, 5.5], [7, 3.5], [10, 2], [15, 0.5]]
+  ev_to_sales:
+    weight: 0.10
+    anchors: [[0.5, 10], [1, 9], [2, 7.5], [4, 5.5], [7, 3.5], [10, 2], [15, 0.5]]
+  fcf_yield_latest_pct:
+    weight: 0.20
+    anchors: [[-2, 0], [0, 1], [2, 3.5], [4, 5.5], [6, 7.5], [8, 9], [12, 10]]
+  dcf_upside_pct:
+    weight: 0.25
+    anchors: [[-50, 0], [-25, 2], [0, 4.5], [25, 6.5], [50, 8], [100, 10]]
+  discount_from_52w_high_pct:
+    weight: 0.10
+    anchors: [[0, 2], [-15, 4], [-30, 6], [-45, 7.5], [-60, 9]]
+
+moat:
+  roic_median_5y_pct:
+    weight: 0.20
+    anchors: [[-5, 0], [0, 2.5], [8, 5], [15, 7.5], [25, 10]]
+  gross_margin_median_5y_pct:
+    weight: 0.20
+    anchors: [[0, 0], [15, 2.5], [30, 4.5], [45, 6.5], [60, 8.5], [75, 10]]
+  gross_margin_stdev_5y_pts:
+    weight: 0.15
+    anchors: [[0, 10], [5, 8], [10, 6], [20, 3.5], [30, 1.5], [40, 0]]
+  revenue_percentile_vs_peers:
+    weight: 0.15
+    anchors: [[0, 1], [25, 3.5], [50, 5.5], [75, 7.5], [100, 10]]
+  customer_concentration_score:
+    weight: 0.15
+    anchors: [[0, 0], [10, 10]]
+  capex_intensity_latest_pct:
+    weight: 0.15
+    anchors: [[0, 1], [5, 3], [15, 6], [25, 8], [35, 10]]
+
+# Rule table for the concentration sub-score (applied in code from filing facts,
+# parameters here): start from base_no_single_customer if no customer >= threshold,
+# subtract per-point penalties for top-10 share above the free allowance.
+concentration_rules:
+  single_customer_threshold_pct: 10
+  base_if_no_single_customer_at_threshold: 7.0
+  base_if_single_customer_present: 4.0
+  single_customer_extra_penalty_per_pct_over_20: 0.1
+  top10_free_allowance_pct: 40
+  top10_penalty_per_pct_over_allowance: 0.04
+  top10_approx_value_when_over_half_pct: 55
+  top10_approx_value_when_one_half_pct: 50
+  score_floor: 0
+  score_ceiling: 10
+
+# Replicability checks for the moat section (thresholds, not code literals).
+moat_checks:
+  entrant_capex_barrier_min_capex_usd: 10000000000
+  margin_fungibility_stdev_pts_over: 15
+  oligopoly_peer_count_max_for_concentrated: 10

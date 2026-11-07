@@ -1,0 +1,20 @@
+# DCF assumptions — all in config. WACC is BUILT, not asserted:
+#   cost_of_equity = risk_free + beta (from tickers.yaml) * equity_risk_premium
+#   cost_of_debt_after_tax = pre_tax_cost_of_debt * (1 - tax_rate)
+#   WACC = cost_of_equity * equity_weight + cost_of_debt_after_tax * debt_weight
+#   (weights from market cap and filing debt at run time)
+# Growth is NOT consensus (no paid consensus in v1): the initial FCF growth is
+# the filed 5-year revenue CAGR, clamped to [floor, cap], then faded linearly
+# to terminal growth over the projection. Every number is visible here.
+dcf:
+  risk_free_rate_pct: 4.3
+  risk_free_source: "config input approximating the 10Y UST yield at snapshot; update here"
+  equity_risk_premium_pct: 5.0
+  pre_tax_cost_of_debt_pct: 4.5
+  tax_rate_pct: 15.0
+  projection_years: 5
+  terminal_growth_pct: 0.0
+  growth:
+    method: "filed_revenue_cagr_5y_clamped_then_linear_fade_to_terminal"
+    floor_pct: 0.0
+    cap_pct: 25.0

@@ -1,0 +1,16 @@
+:root { color-scheme: light dark; }
+body { font-family: system-ui, sans-serif; margin: 24px; max-width: 960px; }
+.muted { opacity: .7; font-size: 13px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.card { border: 1px solid #8884; border-radius: 12px; padding: 14px; }
+.card .score { font-size: 34px; font-weight: 700; }
+.card .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0 20px; }
+td, th { border-bottom: 1px solid #8883; padding: 6px 8px; text-align: left; font-size: 14px; }
+td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.bar-wrap { border: 1px solid #8884; border-radius: 8px; height: 26px; position: relative; overflow: hidden; }
+.bar-price { position: absolute; top: 0; bottom: 0; left: 0; background: #8886; }
+.bar-dcf { position: absolute; top: 0; bottom: 0; width: 3px; background: currentColor; }
+blockquote { border-left: 3px solid #8886; margin: 8px 0; padding: 4px 10px; font-size: 13px; }
+.badge { font-size: 11px; border: 1px solid #8886; border-radius: 999px; padding: 2px 8px; }
+section { margin-top: 28px; }

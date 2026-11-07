@@ -1,0 +1,39 @@
+# US-listed, EDGAR-filing peers for MU used for percentile ranks in v1.
+# SK hynix and Samsung are MU's closest memory rivals but are EXCLUDED in v1:
+# they do not file with the SEC in a form the free EDGAR XBRL API covers, and
+# no free keyless source covers them. See README "Known v1 limits".
+peers:
+  MU:
+    - symbol: NVDA
+      cik: "0001045810"
+      name: "NVIDIA Corporation"
+      rationale: "Largest AI/data-center silicon supplier; data-center demand comp"
+    - symbol: AMD
+      cik: "0000002488"
+      name: "Advanced Micro Devices, Inc."
+      rationale: "Data-center CPU/GPU supplier; semi valuation comp"
+    - symbol: AVGO
+      cik: "0001730168"
+      name: "Broadcom Inc."
+      rationale: "Diversified semi / AI infrastructure comp"
+    - symbol: INTC
+      cik: "0000050863"
+      name: "Intel Corporation"
+      rationale: "US semi manufacturing scale comp"
+    - symbol: QCOM
+      cik: "0000804328"
+      name: "QUALCOMM Incorporated"
+      rationale: "Large-cap semi profitability comp"
+    - symbol: MRVL
+      cik: "0001835632"
+      name: "Marvell Technology, Inc."
+      rationale: "Data-center silicon comp"
+    - symbol: WDC
+      cik: "0000106040"
+      name: "Western Digital Corporation"
+      rationale: "NAND/storage direct business comp"
+    - symbol: STX
+      cik: "0001137789"
+      name: "Seagate Technology Holdings plc"
+      rationale: "Storage direct business comp"
+excluded_note: "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."

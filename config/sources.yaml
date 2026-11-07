@@ -1,0 +1,45 @@
+# Data sources — endpoints, user agent, and XBRL concept maps live here.
+# SEC fair access requires a declared User-Agent with a contact; the
+# email-style contact is what www.sec.gov requires (data.sec.gov accepts it too).
+sources:
+  user_agent: "Muse Business Evaluation Dashboard admin@example.com"
+  request_delay_seconds: 0.2
+  timeout_seconds: 60
+  edgar_companyfacts_url: "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+  edgar_submissions_url: "https://data.sec.gov/submissions/CIK{cik}.json"
+  edgar_archive_url: "https://www.sec.gov/Archives/edgar/data/{cik_int}/{accession_nodash}/{primary_document}"
+  price_feeds:
+    - name: yahoo_chart
+      url: "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1y&interval=1d"
+    - name: stooq_daily_csv
+      url: "https://stooq.com/q/d/l/?s={symbol_lower}.us&i=d"
+
+# XBRL concept candidates per metric. Every candidate is tried and the
+# FRESHEST series (max latest fiscal year-end) wins — companies change tags
+# over time (e.g. NVDA revenue moved concepts), so first-found can be stale.
+# Flow concepts come from 10-K / FY rows with an annual duration; balance
+# concepts as instant rows. Gross profit falls back to revenue minus
+# cost_of_revenue when a filer (e.g. STX) tags cost but not gross profit.
+concepts:
+  revenue: ["RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "Revenues"]
+  gross_profit: ["GrossProfit"]
+  cost_of_revenue: ["CostOfGoodsAndServicesSold", "CostOfRevenue", "CostOfGoodsSold"]
+  operating_income: ["OperatingIncomeLoss"]
+  net_income: ["NetIncomeLoss"]
+  operating_cash_flow: ["NetCashProvidedByUsedInOperatingActivities"]
+  capex: ["PaymentsToAcquirePropertyPlantAndEquipment"]
+  cash: ["CashAndCashEquivalentsAtCarryingValue"]
+  investments_current: ["AvailableForSaleSecuritiesDebtSecuritiesCurrent"]
+  investments_noncurrent: ["AvailableForSaleSecuritiesDebtSecuritiesNoncurrent"]
+  total_debt: ["DebtAndCapitalLeaseObligations", "LongTermDebtAndCapitalLeaseObligations"]
+  diluted_shares: ["WeightedAverageNumberOfDilutedSharesOutstanding"]
+  eps_diluted: ["EarningsPerShareDiluted"]
+  rd_expense: ["ResearchAndDevelopmentExpense"]
+  equity: ["StockholdersEquity"]
+
+# Filing full-text concentration extraction: sentence keyword rules.
+filing_search:
+  form: "10-K"
+  single_customer_keywords: ["customer accounted for"]
+  top_ten_keywords: ["top ten customers"]
+  data_center_keywords: ["data center", "end market"]

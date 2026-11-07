@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Evaluation Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1 id="title">Business Evaluation Dashboard</h1>
+  <p id="meta" class="muted">Loading scores.json…</p>
+</header>
+
+<section id="score-cards" class="cards"></section>
+
+<section>
+  <h2>DCF vs current price</h2>
+  <div id="dcf"></div>
+</section>
+
+<section>
+  <h2>Key KPIs (filed, SEC EDGAR)</h2>
+  <table id="kpis"></table>
+</section>
+
+<section>
+  <h2>Valuation</h2>
+  <table id="valuation"></table>
+</section>
+
+<section>
+  <h2>Peers (US-listed EDGAR filers, v1)</h2>
+  <p id="peer-note" class="muted"></p>
+  <table id="peers"></table>
+  <div id="percentiles"></div>
+</section>
+
+<section>
+  <h2>Moat — is it valid, or easily replicated?</h2>
+  <div id="moat-checks"></div>
+  <h3>Customer concentration (from the latest 10-K)</h3>
+  <div id="concentration"></div>
+</section>
+
+<section>
+  <h2>Why these scores?</h2>
+  <div id="explanations"></div>
+  <h3>Data quality &amp; limits</h3>
+  <div id="data-quality" class="muted"></div>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
