@@ -75,7 +75,8 @@ def evaluate(symbol, cfg):
                 pprice = None
             peer_rows.append({"symbol": peer["symbol"], "name": peer["name"],
                               "rationale": peer["rationale"],
-                              "revenue": pm.get("revenue_latest"),
+                              "revenue": pm.get("revenue_ttm") or pm.get("revenue_latest"),
+                              "revenue_annual": pm.get("revenue_latest"),
                               "gross_margin_latest_pct": pm.get("gross_margin_latest_pct"),
                               "fcf_margin_latest_pct": pm.get("fcf_margin_latest_pct"),
                               "price_to_sales": pm.get("price_to_sales"),
@@ -84,9 +85,12 @@ def evaluate(symbol, cfg):
             peer_failures.append({"symbol": peer["symbol"], "error": str(exc)})
 
     percentiles = {}
-    for key, mkey in (("revenue", "revenue_latest"), ("gross_margin_latest_pct", "gross_margin_latest_pct"),
+    for key, mkey in (("gross_margin_latest_pct", "gross_margin_latest_pct"),
                       ("fcf_margin_latest_pct", "fcf_margin_latest_pct"), ("price_to_sales", "price_to_sales")):
         percentiles[key] = scoring.percentile_rank(m.get(mkey), [r.get(key) for r in peer_rows])
+    # Scale percentile on the same TTM basis as the multiples.
+    percentiles["revenue"] = scoring.percentile_rank(
+        m.get("revenue_ttm") or m.get("revenue_latest"), [r.get("revenue") for r in peer_rows])
 
     # DCF
     wacc = dcfmod.build_wacc(cfg["dcf"]["dcf"], ticker["beta"], m.get("market_cap"), m.get("total_debt_latest"))
@@ -105,6 +109,9 @@ def evaluate(symbol, cfg):
     moat = scoring.score_section(sc["moat"], m)
 
     data_quality = {
+        "trailing_multiples_basis": m.get("multiples_basis"),
+        "ttm_end": m.get("ttm_end"),
+        "ttm_details": m.get("ttm_details"),
         "consensus_eps": "missing_by_design_v1_no_paid_consensus - forward multiples use filed actuals and the config DCF only",
         "beta": f"config input - {ticker.get('beta_source')}",
         "risk_free_and_erp": "config inputs in config/dcf.yaml",

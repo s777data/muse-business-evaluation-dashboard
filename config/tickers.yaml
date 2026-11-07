@@ -9,3 +9,10 @@ tickers:
     currency: USD
     beta: 2.30
     beta_source: "config input (long-run market beta used in prior DD; no free keyless beta source in v1)"
+  NVDA:
+    name: "NVIDIA Corporation"
+    cik: "0001045810"
+    exchange: NASDAQ
+    currency: USD
+    beta: 1.65
+    beta_source: "config input (long-run market beta estimate; no free keyless beta source in v1)"

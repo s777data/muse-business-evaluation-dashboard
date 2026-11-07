@@ -17,9 +17,13 @@ sources:
 # XBRL concept candidates per metric. Every candidate is tried and the
 # FRESHEST series (max latest fiscal year-end) wins — companies change tags
 # over time (e.g. NVDA revenue moved concepts), so first-found can be stale.
-# Flow concepts come from 10-K / FY rows with an annual duration; balance
-# concepts as instant rows. Gross profit falls back to revenue minus
-# cost_of_revenue when a filer (e.g. STX) tags cost but not gross profit.
+# Flow concepts: the ANNUAL series comes from 10-K / FY rows with an
+# annual duration; the same concepts' 10-Q duration rows are also read to
+# build true trailing-twelve-month values (annual + current-FY YTD -
+# prior-year YTD) for trailing multiples. Balance concepts are read as
+# instant rows, latest filed period end across 10-K and 10-Q. Gross
+# profit falls back to revenue minus cost_of_revenue when a filer
+# (e.g. STX) tags cost but not gross profit.
 concepts:
   revenue: ["RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "Revenues"]
   gross_profit: ["GrossProfit"]
@@ -27,7 +31,11 @@ concepts:
   operating_income: ["OperatingIncomeLoss"]
   net_income: ["NetIncomeLoss"]
   operating_cash_flow: ["NetCashProvidedByUsedInOperatingActivities"]
-  capex: ["PaymentsToAcquirePropertyPlantAndEquipment"]
+  # Some filers retagged capex: NVDA and QCOM now report it as
+  # PaymentsToAcquireProductiveAssets (their PropertyPlantAndEquipment
+  # series end in 2012 / are absent). Freshest-series selection keeps the
+  # right concept per filer; no peer in the set tags both with live data.
+  capex: ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"]
   cash: ["CashAndCashEquivalentsAtCarryingValue"]
   investments_current: ["AvailableForSaleSecuritiesDebtSecuritiesCurrent"]
   investments_noncurrent: ["AvailableForSaleSecuritiesDebtSecuritiesNoncurrent"]

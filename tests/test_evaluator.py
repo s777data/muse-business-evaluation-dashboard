@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.evaluator.scoring import interpolate, concentration_score
 from src.evaluator.dcf import fair_value, growth_path, build_wacc
 from src.evaluator.filings import extract_concentration
+from src.evaluator.metrics import ttm_from_periods, _latest_period_value, add_price_metrics
 
 RULES = {"base_if_no_single_customer_at_threshold": 7.0,
          "base_if_single_customer_present": 4.0,
@@ -72,6 +73,58 @@ class TestConcentration(unittest.TestCase):
         out = extract_concentration(self.SNIPPET, SEARCH, RULES, latest_fy_year=2026)
         # base 7.0 - (55-40)*0.04 = 6.4
         self.assertAlmostEqual(concentration_score(out, RULES), 6.4)
+
+
+class TestTTM(unittest.TestCase):
+    """Regression for the annual-as-TTM bug. NVDA-shaped data (values in
+    $M): annual FY ended 2026-01-25 of 215,938, two filed quarters into
+    the next FY, and NO standalone Q4 row (a fiscal Q4 is reported only
+    inside the annual figure). True TTM revenue is ~302,970, so P/S at
+    $186.64 on ~24,285M shares must come out ~15x, not the ~21x the
+    annual figure produced."""
+    ROWS = [
+        # latest annual year (FY26): start 2025-01-27, end 2026-01-25
+        {"start": "2025-01-27", "end": "2025-04-27", "value": 44062, "filed": "2025-05-28"},   # prior Q1
+        {"start": "2025-01-27", "end": "2025-07-27", "value": 90805, "filed": "2025-08-27"},   # prior H1 YTD
+        {"start": "2025-04-28", "end": "2025-07-27", "value": 46743, "filed": "2025-08-27"},   # prior Q2 standalone
+        {"start": "2025-01-27", "end": "2025-10-26", "value": 147811, "filed": "2025-11-19"},  # prior 9M YTD
+        {"start": "2025-01-27", "end": "2026-01-25", "value": 215938, "filed": "2026-02-25"},  # annual (incl. Q4)
+        # current FY (FY27): start 2026-01-26
+        {"start": "2026-01-26", "end": "2026-04-26", "value": 81615, "filed": "2026-05-20"},   # Q1
+        {"start": "2026-01-26", "end": "2026-07-26", "value": 177837, "filed": "2026-08-26"},  # H1 YTD
+        {"start": "2026-04-27", "end": "2026-07-26", "value": 96221, "filed": "2026-08-26"},   # Q2 standalone
+    ]
+    SHARE_ROWS = [
+        {"start": "2025-01-27", "end": "2026-01-25", "value": 24514, "filed": "2026-02-25"},  # annual avg
+        {"start": "2026-01-26", "end": "2026-07-26", "value": 24338, "filed": "2026-08-26"},  # H1 YTD avg
+        {"start": "2026-04-27", "end": "2026-07-26", "value": 24285, "filed": "2026-08-26"},  # Q2 standalone
+    ]
+
+    def test_ttm_revenue_not_annual(self):
+        t = ttm_from_periods(self.ROWS, "2025-01-27", "2026-01-25", 215938)
+        self.assertEqual(t["value"], 215938 + 177837 - 90805)
+        self.assertEqual(t["value"], 302970)
+        self.assertEqual(t["ttm_end"], "2026-07-26")
+        self.assertEqual(t["basis"], "annual_plus_current_fy_ytd_minus_prior_year_ytd")
+
+    def test_ttm_ps_ratio(self):
+        t = ttm_from_periods(self.ROWS, "2025-01-27", "2026-01-25", 215938)
+        m = {"revenue_ttm": t["value"], "revenue_latest": 215938,
+             "diluted_shares_latest_period": _latest_period_value(self.SHARE_ROWS),
+             "diluted_shares_latest": 24514, "net_cash_latest": 0,
+             "eps_diluted_ttm": 7.91, "fcf_ttm": 127006}
+        price = {"last_close": 186.64, "high_52w": 236.54, "low_52w": 164.07}
+        m = add_price_metrics(m, price)
+        self.assertEqual(m["diluted_shares_latest_period"], 24285)
+        self.assertAlmostEqual(m["price_to_sales"], 14.96, places=2)
+        self.assertLess(m["price_to_sales"], 16)
+        self.assertEqual(m["multiples_basis"], "ttm")
+
+    def test_no_interim_filings_ttm_equals_annual(self):
+        rows = [r for r in self.ROWS if r["end"] <= "2026-01-25"]
+        t = ttm_from_periods(rows, "2025-01-27", "2026-01-25", 215938)
+        self.assertEqual(t["value"], 215938)
+        self.assertEqual(t["basis"], "annual_only_no_interim_filings_since_fy_end")
 
 
 if __name__ == "__main__":

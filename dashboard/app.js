@@ -45,8 +45,9 @@ async function load() {
   ]);
 
   rows(document.getElementById("valuation"), [
-    ["Trailing P/E (filed diluted EPS)", fmtX(k.trailing_pe)], ["Price / Sales", fmtX(k.price_to_sales)],
-    ["EV / Sales", fmtX(k.ev_to_sales)], ["FCF yield (latest FY)", fmtP(k.fcf_yield_latest_pct)],
+    ["Trailing P/E (filed diluted EPS, TTM)", fmtX(k.trailing_pe)], ["Price / Sales (TTM)", fmtX(k.price_to_sales)],
+    ["EV / Sales (TTM)", fmtX(k.ev_to_sales)], ["FCF yield (TTM)", fmtP(k.fcf_yield_latest_pct)],
+    ["Revenue (TTM)", fmtB(k.revenue_used_for_multiples)],
     ["Market cap", fmtB(k.market_cap)], ["Discount from 52-week high", fmtP(k.discount_from_52w_high_pct)],
   ]);
 

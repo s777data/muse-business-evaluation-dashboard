@@ -27,7 +27,7 @@ that mirrors the Muse Space dashboard.
 
 | Input | Source |
 |---|---|
-| Revenue, margins, OCF, capex, cash, investments, debt, shares, EPS, R&D | SEC EDGAR XBRL companyfacts (`data.sec.gov`), 10-K/FY rows, latest filing wins per fiscal year |
+| Revenue, margins, OCF, capex, cash, investments, debt, shares, EPS, R&D | SEC EDGAR XBRL companyfacts (`data.sec.gov`). Annual history from 10-K/FY rows, latest filing wins per fiscal year; trailing multiples use true TTM built from 10-K + 10-Q rows (see Formulas); balance-sheet "latest" is the latest filed period end across 10-K and 10-Q |
 | Customer concentration | Latest 10-K full text from SEC Archives, rule-based sentence extraction; the exact sentence is stored as evidence in `scores.json` |
 | Price, 52-week high/low | Free feeds in config order (`config/sources.yaml`). In v1 testing, Stooq returned an empty body from this network, so the Yahoo chart API is tried first. If **no** feed returns data, the run **fails closed** with a clear error — no price is ever invented |
 | Beta, risk-free rate, ERP | **Config inputs** (`config/tickers.yaml`, `config/dcf.yaml`), disclosed in `data_quality`. No free keyless source covers them in v1 |
@@ -46,6 +46,19 @@ served an "undeclared automated tool" page). Responses are disk-cached for
 - **Through-cycle rule:** margin *levels* are scored on the **5-year median**,
   not the latest year, so a cyclical peak year cannot max a score. Margin
   *stability* (5-year gross-margin stdev) is its own sub-score.
+- **Trailing multiples are true TTM, never the latest annual in disguise:**
+  P/S, EV/S, trailing P/E and FCF yield use
+  `TTM = latest annual + current-FY year-to-date − same YTD a year earlier`,
+  computed per flow metric (revenue, EPS, OCF, capex) from filed duration
+  rows, with market cap on the most recent period's diluted share count.
+  Summing the last four quarters is deliberately *not* used — a fiscal Q4
+  is often never filed as a standalone quarter (NVDA's Q4 exists only
+  inside its annual figure). If no 10-Q has been filed since the fiscal
+  year-end, TTM equals the annual figure and `data_quality.ttm_details`
+  says so (`annual_only_no_interim_filings_since_fy_end`); if a prior-year
+  YTD cannot be found, the metric falls back to annual and the basis is
+  recorded as `annual_fallback`. The annual history, medians and the DCF
+  base stay annual by design.
 - **DCF:** FCF/share base = latest filed FY free cash flow (OCF − capex) /
   diluted shares. Growth = filed 5-year revenue CAGR clamped to the config
   floor/cap and faded linearly to terminal growth over the projection.
@@ -86,5 +99,9 @@ are shown their workings; neither is hidden inside a model call.
 - **Beta / risk-free / ERP are config inputs**, updated by hand in config.
 - **Switching costs are not evaluated** (no structured free source); the moat
   section flags this instead of proxying it silently.
-- One ticker (MU) is wired in `config/tickers.yaml`; adding a ticker is a
-  config entry (name, CIK, beta), not a code change.
+- Tickers wired in `config/tickers.yaml`: MU and NVDA; adding a ticker is
+  a config entry (name, CIK, beta), not a code change. Capex concept
+  candidates in `config/sources.yaml` include both
+  `PaymentsToAcquirePropertyPlantAndEquipment` and
+  `PaymentsToAcquireProductiveAssets` — NVDA and QCOM retagged capex to
+  the latter, and freshest-series selection keeps the right one per filer.

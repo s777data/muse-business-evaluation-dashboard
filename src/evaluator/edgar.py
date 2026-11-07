@@ -1,9 +1,18 @@
 """SEC EDGAR XBRL companyfacts extraction.
 
-Flow metrics (revenue, income, cash flow) are taken from 10-K / FY rows with
-an annual duration (~300-400 days); balance metrics from instant rows.
-Duplicates across filings (restatements) are resolved by keeping, per fiscal
-year-end, the row from the most recently filed document.
+Annual series (used for through-cycle medians, growth history and the DCF
+base) are taken from 10-K / FY rows with an annual duration (~300-400
+days); duplicates across filings (restatements) are resolved by keeping,
+per fiscal year-end, the row from the most recently filed document.
+
+For TRAILING-TWELVE-MONTH multiples the annual figure alone is stale
+whenever interim 10-Qs have been filed since the fiscal year-end, so this
+module also returns, per flow metric, every filed duration row of the
+chosen concept ("_periods") and, per balance metric, the latest instant
+row across 10-K and 10-Q ("_balance_latest"). metrics.py builds true TTM
+values from those rows: latest annual + current-FY year-to-date - same
+period a year earlier. (Summing the last four quarters is NOT robust: a
+fiscal Q4 is often never filed as a standalone quarter.)
 """
 from datetime import date
 
@@ -15,6 +24,7 @@ UNIT_PREFERENCE = {
     "diluted_shares": ["shares"],
     "eps_diluted": ["USD/shares"],
 }
+PERIOD_FORMS = {"10-K", "10-Q", "10-K/A", "10-Q/A"}
 
 
 def _parse_day(s):
@@ -22,43 +32,78 @@ def _parse_day(s):
     return date(y, m, d)
 
 
+def _unit_rows(facts, concept, metric):
+    """Raw XBRL rows for one concept in the preferred unit, or []."""
+    node = facts.get("facts", {}).get("us-gaap", {}).get(concept)
+    if not node:
+        return []
+    units = node.get("units", {})
+    pref = UNIT_PREFERENCE.get(metric, ["USD"])
+    unit_key = next((u for u in pref if u in units), None) or (list(units) or [None])[0]
+    if unit_key is None:
+        return []
+    return units[unit_key]
+
+
+def _annual_from_rows(rows, metric):
+    """Annual series from raw rows: 10-K / FY only, annual duration for
+    flow metrics, instant rows for balance metrics."""
+    by_end = {}
+    for row in rows:
+        if row.get("form") != "10-K" or row.get("fp") != "FY":
+            continue
+        if metric in BALANCE_METRICS:
+            if row.get("start"):
+                continue
+        else:
+            if not row.get("start"):
+                continue
+            dur = (_parse_day(row["end"]) - _parse_day(row["start"])).days
+            if not (300 <= dur <= 400):
+                continue
+        end = row["end"]
+        if end not in by_end or row.get("filed", "") > by_end[end].get("filed", ""):
+            by_end[end] = row
+    return [{"end": e, "value": by_end[e]["val"], "filed": by_end[e].get("filed")}
+            for e in sorted(by_end)]
+
+
+def _period_rows(rows):
+    """Every duration row (10-K/10-Q, incl. amendments), deduplicated by
+    (start, end) keeping the most recently filed value."""
+    by_key = {}
+    for row in rows:
+        if row.get("form") not in PERIOD_FORMS or not row.get("start"):
+            continue
+        key = (row["start"], row["end"])
+        if key not in by_key or row.get("filed", "") > by_key[key].get("filed", ""):
+            by_key[key] = row
+    return [{"start": s, "end": e, "value": by_key[(s, e)]["val"],
+             "filed": by_key[(s, e)].get("filed")} for (s, e) in sorted(by_key)]
+
+
+def _latest_instant(rows):
+    """Latest balance-sheet instant row across 10-K and 10-Q: max period
+    end, then most recently filed."""
+    best = None
+    for row in rows:
+        if row.get("form") not in PERIOD_FORMS or row.get("start"):
+            continue
+        if best is None or (row["end"], row.get("filed", "")) > (best["end"], best.get("filed", "")):
+            best = row
+    return {"end": best["end"], "value": best["val"], "filed": best.get("filed")} if best else None
+
+
 def annual_series(facts, candidates, metric):
     """Try every candidate concept and keep the FRESHEST series (max latest
     fiscal year-end). Companies change tags over time — e.g. NVDA's total
     revenue moved from RevenueFromContract... to Revenues — so first-found
     can be years stale."""
-    gaap = facts.get("facts", {}).get("us-gaap", {})
     best = []
     for concept in candidates:
-        node = gaap.get(concept)
-        if not node:
-            continue
-        units = node.get("units", {})
-        pref = UNIT_PREFERENCE.get(metric, ["USD"])
-        unit_key = next((u for u in pref if u in units), None) or (list(units) or [None])[0]
-        if unit_key is None:
-            continue
-        by_end = {}
-        for row in units[unit_key]:
-            if row.get("form") != "10-K" or row.get("fp") != "FY":
-                continue
-            if metric in BALANCE_METRICS:
-                if row.get("start"):
-                    continue
-            else:
-                if not row.get("start"):
-                    continue
-                dur = (_parse_day(row["end"]) - _parse_day(row["start"])).days
-                if not (300 <= dur <= 400):
-                    continue
-            end = row["end"]
-            if end not in by_end or row.get("filed", "") > by_end[end].get("filed", ""):
-                by_end[end] = row
-        if by_end:
-            series = [{"end": e, "value": by_end[e]["val"], "filed": by_end[e].get("filed")}
-                      for e in sorted(by_end)]
-            if not best or series[-1]["end"] > best[-1]["end"]:
-                best = series
+        series = _annual_from_rows(_unit_rows(facts, concept, metric), metric)
+        if series and (not best or series[-1]["end"] > best[-1]["end"]):
+            best = series
     return best
 
 
@@ -67,7 +112,25 @@ def get_company_metrics(sources_cfg, cik):
     url = src["edgar_companyfacts_url"].format(cik=cik)
     facts = fetch_json(url, src["user_agent"], src["timeout_seconds"],
                        src["request_delay_seconds"])
-    series = {}
+    series, periods, balance_latest = {}, {}, {}
     for metric, candidates in sources_cfg["concepts"].items():
-        series[metric] = annual_series(facts, candidates, metric)
+        # Choose the concept with the freshest annual series (or, for a
+        # metric with no annual rows at all, the first with any rows).
+        chosen_rows, best = [], []
+        for concept in candidates:
+            rows = _unit_rows(facts, concept, metric)
+            annual = _annual_from_rows(rows, metric)
+            if annual and (not best or annual[-1]["end"] > best[-1]["end"]):
+                chosen_rows, best = rows, annual
+            elif not best and not chosen_rows and rows:
+                chosen_rows = rows
+        series[metric] = best
+        if metric in BALANCE_METRICS:
+            latest = _latest_instant(chosen_rows)
+            if latest:
+                balance_latest[metric] = latest
+        else:
+            periods[metric] = _period_rows(chosen_rows)
+    series["_periods"] = periods
+    series["_balance_latest"] = balance_latest
     return facts.get("entityName"), series
