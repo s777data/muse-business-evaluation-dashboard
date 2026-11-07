@@ -12,6 +12,23 @@ def _fmt(metric, entry):
     return f"{metric.replace('_', ' ')} scored {entry['score']}/10 (value {entry['value']})"
 
 
+def leverage_note(scored):
+    """Generic leverage sentence for the Business explanation: names the
+    debt-to-revenue and interest-coverage sub-scores when they were
+    scored, or states plainly that they were excluded."""
+    subs = scored.get("subscores", {})
+    parts = []
+    for key, label in (("leverage_debt_to_revenue_ttm", "Debt-to-TTM-revenue leverage"),
+                       ("interest_coverage_ttm", "Interest coverage")):
+        entry = subs.get(key)
+        if entry:
+            parts.append(f"{label} scored {entry['score']}/10 (value {entry['value']})")
+    if parts:
+        return " " + " and ".join(parts) + "."
+    return (" Leverage checks (debt-to-TTM-revenue and interest coverage) were "
+            "excluded: filed debt or interest data could not be determined.")
+
+
 def explain(section_name, scored, extra=""):
     subs = scored.get("subscores", {})
     total = scored.get("total")

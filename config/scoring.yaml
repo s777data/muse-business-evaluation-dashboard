@@ -6,14 +6,21 @@
 # This is a generic method applied identically to every ticker, not tuned per name.
 
 business:
+  # Weight rebalance (v2): two leverage sub-scores were added after a run
+  # scored CoreWeave Business 7.11 while its $35.6B debt went unseen —
+  # growth and gross-margin level were over-weighted and the balance sheet
+  # had a single 0.15 voice. The new 0.075 + 0.075 comes out of
+  # revenue_growth (0.15->0.10), revenue_cagr (0.10->0.075),
+  # gross_margin_median (0.20->0.175) and net_cash_to_revenue
+  # (0.15->0.10); all nine weights still sum to exactly 1.0.
   revenue_growth_latest_pct:
-    weight: 0.15
+    weight: 0.10
     anchors: [[-20, 0], [0, 3], [25, 6], [75, 8.5], [150, 10]]
   revenue_cagr_5y_pct:
-    weight: 0.10
+    weight: 0.075
     anchors: [[-5, 1], [0, 3], [10, 5.5], [20, 7.5], [30, 9], [40, 10]]
   gross_margin_median_5y_pct:
-    weight: 0.20
+    weight: 0.175
     anchors: [[0, 0], [15, 2.5], [30, 4.5], [45, 6.5], [60, 8.5], [75, 10]]
   operating_margin_median_5y_pct:
     weight: 0.15
@@ -22,11 +29,27 @@ business:
     weight: 0.15
     anchors: [[-10, 0], [0, 2.5], [10, 5.5], [20, 8], [30, 10]]
   net_cash_to_revenue:
-    weight: 0.15
+    weight: 0.10
     anchors: [[-1.0, 0], [-0.25, 2], [0, 4.5], [0.25, 6.5], [0.5, 8], [1.0, 10]]
   gross_margin_stdev_5y_pts:
     weight: 0.10
     anchors: [[0, 10], [5, 8], [10, 6], [20, 3.5], [30, 1.5], [40, 0]]
+  # Leverage: gross debt against trailing revenue. A debt-free filer
+  # scores 10; debt equal to a full year of revenue (1.0x) is mid-pack;
+  # 3x revenue is distress territory for all but regulated balance
+  # sheets, and 5x+ scores zero. Unlike net_cash_to_revenue this cannot
+  # be flattered by a large cash pile raised from the debt itself.
+  leverage_debt_to_revenue_ttm:
+    weight: 0.075
+    anchors: [[0, 10], [0.5, 8], [1.0, 6], [2.0, 4], [3.0, 2], [5.0, 0]]
+  # Interest coverage: TTM operating income over TTM interest expense.
+  # At or below zero (the filer does not earn its interest) it scores 0;
+  # 2x is thin, 4x adequate, 8x strong, 15x fortress. Missing when the
+  # filer reports no interest expense (e.g. no debt) — the weight then
+  # renormalises rather than awarding a free 10.
+  interest_coverage_ttm:
+    weight: 0.075
+    anchors: [[0, 0], [1, 2], [2, 4], [4, 6], [8, 8], [15, 10]]
 
 value:
   trailing_pe:

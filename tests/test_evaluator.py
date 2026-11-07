@@ -4,10 +4,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.evaluator.scoring import interpolate, concentration_score
+from src.evaluator.scoring import interpolate, concentration_score, score_section
 from src.evaluator.dcf import fair_value, growth_path, build_wacc
 from src.evaluator.filings import extract_concentration
-from src.evaluator.metrics import ttm_from_periods, _latest_period_value, add_price_metrics
+from src.evaluator.metrics import (ttm_from_periods, _latest_period_value, add_price_metrics,
+                                   compute_metrics, resolve_total_debt)
+from src.evaluator import config as cfgmod
 
 RULES = {"base_if_no_single_customer_at_threshold": 7.0,
          "base_if_single_customer_present": 4.0,
@@ -125,6 +127,83 @@ class TestTTM(unittest.TestCase):
         t = ttm_from_periods(rows, "2025-01-27", "2026-01-25", 215938)
         self.assertEqual(t["value"], 215938)
         self.assertEqual(t["basis"], "annual_only_no_interim_filings_since_fy_end")
+
+
+class TestDebtResolution(unittest.TestCase):
+    """Regression for the CoreWeave bug: total_debt came back null (the
+    filer's debt lived in DebtInstrumentCarryingAmount, which the concept
+    list missed) and metrics treated missing debt as $0, so
+    net_cash_to_revenue scored a fictitious +0.73 and Business came out
+    7.11 for a company carrying ~$35.6B of debt."""
+
+    def test_no_debt_concepts_fail_closed(self):
+        series = {
+            "revenue": [{"end": "2024-12-31", "value": 100.0},
+                        {"end": "2025-12-31", "value": 120.0}],
+            "cash": [{"end": "2025-12-31", "value": 50.0}],
+            "_periods": {},
+            "_balance_latest": {"cash": {"end": "2025-12-31", "value": 50.0,
+                                         "filed": "2026-02-01"}},
+            "_debt_instants": {"totals": {}, "current": {}, "noncurrent": {}},
+        }
+        m = compute_metrics(series, 15.0)
+        self.assertIsNone(m["total_debt_latest"])
+        self.assertIsNone(m["net_cash_latest"])
+        self.assertIsNone(m["net_cash_to_revenue"])
+        self.assertIsNone(m["leverage_debt_to_revenue_ttm"])
+        self.assertTrue(m["debt_not_determinable_fail_closed"])
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        # Excluded and renormalised — never scored as zero debt.
+        self.assertIn("net_cash_to_revenue", business["missing_metrics"])
+        self.assertIn("leverage_debt_to_revenue_ttm", business["missing_metrics"])
+        self.assertNotIn("net_cash_to_revenue", business["subscores"])
+
+    def test_crwv_like_carrying_amount_resolves(self):
+        # CoreWeave-shaped: at the latest balance date the ONLY debt tag
+        # is DebtInstrumentCarryingAmount ($35.55B at 2026-06-30); the
+        # LongTermDebt pair exists only in an older period.
+        instants = {
+            "totals": {"DebtInstrumentCarryingAmount": {"2026-06-30": 35.55e9}},
+            "current": {"LongTermDebtCurrent": {"2026-03-31": 7.55e9}},
+            "noncurrent": {"LongTermDebtNoncurrent": {"2026-03-31": 17.31e9}},
+        }
+        res = resolve_total_debt(instants)
+        self.assertEqual(res["value"], 35.55e9)
+        self.assertEqual(res["as_of"], "2026-06-30")
+        self.assertEqual(res["method"], "single_total:DebtInstrumentCarryingAmount")
+
+        series = {
+            "revenue": [{"end": "2025-12-31", "value": 7.59e9}],
+            "cash": [],
+            "_periods": {},
+            "_balance_latest": {"cash": {"end": "2026-06-30", "value": 5.524e9,
+                                         "filed": "2026-08-12"}},
+            "_debt_instants": instants,
+        }
+        m = compute_metrics(series, 15.0)
+        self.assertEqual(m["total_debt_latest"], 35.55e9)
+        self.assertAlmostEqual(m["net_cash_latest"], 5.524e9 - 35.55e9)
+        self.assertAlmostEqual(m["leverage_debt_to_revenue_ttm"], 35.55e9 / 7.59e9, places=4)
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        # Net-cash ratio is ~-3.96: clamped to a 0 score, not +8.91.
+        self.assertEqual(business["subscores"]["net_cash_to_revenue"]["score"], 0)
+        self.assertLess(business["subscores"]["leverage_debt_to_revenue_ttm"]["score"], 0.5)
+
+    def test_pair_wins_over_total_at_same_date(self):
+        instants = {
+            "totals": {"LongTermDebt": {"2026-06-30": 90.0}},
+            "current": {"LongTermDebtCurrent": {"2026-06-30": 30.0}},
+            "noncurrent": {"LongTermDebtNoncurrent": {"2026-06-30": 70.0}},
+        }
+        res = resolve_total_debt(instants)
+        self.assertEqual(res["method"], "current_plus_noncurrent_pair")
+        self.assertEqual(res["value"], 100.0)
+
+    def test_business_weights_sum_to_one(self):
+        business = cfgmod.load_all()["scoring"]["business"]
+        self.assertAlmostEqual(sum(s["weight"] for s in business.values()), 1.0, places=9)
+        self.assertIn("leverage_debt_to_revenue_ttm", business)
+        self.assertIn("interest_coverage_ttm", business)
 
 
 if __name__ == "__main__":

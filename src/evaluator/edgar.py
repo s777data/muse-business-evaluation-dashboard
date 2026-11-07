@@ -94,6 +94,29 @@ def _latest_instant(rows):
     return {"end": best["end"], "value": best["val"], "filed": best.get("filed")} if best else None
 
 
+def _instants_by_end(rows):
+    """Every instant row across 10-K and 10-Q as {end: value},
+    deduplicated per period end keeping the most recently filed value."""
+    by_end = {}
+    for row in rows:
+        if row.get("form") not in PERIOD_FORMS or row.get("start"):
+            continue
+        end = row["end"]
+        if end not in by_end or row.get("filed", "") > by_end[end].get("filed", ""):
+            by_end[end] = row
+    return {e: by_end[e]["val"] for e in sorted(by_end)}
+
+
+# Debt is resolved in metrics.resolve_total_debt from instant rows of ALL
+# debt concepts, grouped by role (see config/sources.yaml for the priority
+# rules). These config keys are component lists, not standalone metrics,
+# so the main per-metric loop below skips them.
+DEBT_GROUPS = (("totals", "total_debt"),
+               ("current", "total_debt_current"),
+               ("noncurrent", "total_debt_noncurrent"))
+DEBT_COMPONENT_KEYS = {"total_debt_current", "total_debt_noncurrent"}
+
+
 def annual_series(facts, candidates, metric):
     """Try every candidate concept and keep the FRESHEST series (max latest
     fiscal year-end). Companies change tags over time — e.g. NVDA's total
@@ -114,6 +137,8 @@ def get_company_metrics(sources_cfg, cik):
                        src["request_delay_seconds"])
     series, periods, balance_latest = {}, {}, {}
     for metric, candidates in sources_cfg["concepts"].items():
+        if metric in DEBT_COMPONENT_KEYS:
+            continue
         # Choose the concept with the freshest annual series (or, for a
         # metric with no annual rows at all, the first with any rows).
         chosen_rows, best = [], []
@@ -131,6 +156,18 @@ def get_company_metrics(sources_cfg, cik):
                 balance_latest[metric] = latest
         else:
             periods[metric] = _period_rows(chosen_rows)
+    # Debt instants for every debt concept (not just the one concept the
+    # annual-series selection picked): resolution at the latest balance
+    # date happens in metrics.compute_metrics.
+    debt_instants = {}
+    for group, key in DEBT_GROUPS:
+        per_concept = {}
+        for concept in sources_cfg["concepts"].get(key, []):
+            inst = _instants_by_end(_unit_rows(facts, concept, "total_debt"))
+            if inst:
+                per_concept[concept] = inst
+        debt_instants[group] = per_concept
+    series["_debt_instants"] = debt_instants
     series["_periods"] = periods
     series["_balance_latest"] = balance_latest
     return facts.get("entityName"), series

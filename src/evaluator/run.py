@@ -118,6 +118,10 @@ def evaluate(symbol, cfg):
         "consensus_eps": "missing_by_design_v1_no_paid_consensus - forward multiples use filed actuals and the config DCF only",
         "beta": f"config input - {ticker.get('beta_source')}" if beta is not None else "missing - no beta in config/tickers.yaml; DCF sub-score missing, value weights renormalised",
         "beta_missing": beta is None,
+        "total_debt_resolution": m.get("total_debt_resolution"),
+        "debt_not_determinable_fail_closed": bool(m.get("debt_not_determinable_fail_closed")),
+        "finance_lease_liabilities": "excluded_from_total_debt - total debt counts borrowings and debt instruments per the config/sources.yaml resolution priority; operating and finance lease liabilities are not added (several total concepts already embed capital/finance leases)",
+        "interest_coverage_missing_reason": m.get("interest_coverage_missing_reason"),
         "risk_free_and_erp": "config inputs in config/dcf.yaml",
         "sk_hynix_samsung": cfg["peers"].get("excluded_note"),
         "peer_failures": peer_failures,
@@ -130,7 +134,7 @@ def evaluate(symbol, cfg):
     }
 
     expl = {
-        "business": explanations.explain("Business", business),
+        "business": explanations.explain("Business", business, explanations.leverage_note(business)),
         "value": explanations.explain("Value", value,
                                       f" The DCF fair value is ${fv['fair_value_per_share']:,.2f} vs the current ${price['last_close']:,.2f} ({upside:+.1f}%)." if fv else ""),
         "moat": explanations.explain("Moat", moat),

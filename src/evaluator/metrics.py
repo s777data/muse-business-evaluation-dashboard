@@ -100,6 +100,53 @@ def _annual_start(period_rows, annual_end):
     return None
 
 
+def _first_at(group, end):
+    """First concept (config priority order) with an instant value at end."""
+    for concept, by_end in (group or {}).items():
+        if end in by_end:
+            return concept, by_end[end]
+    return None
+
+
+def resolve_total_debt(debt_instants, fallback_latest=None):
+    """Resolve total debt at the latest determinable balance date.
+
+    debt_instants: {"totals": {concept: {end: value}}, "current": {...},
+    "noncurrent": {...}} as built by edgar.get_company_metrics. Dates are
+    tried newest first; at each date a current+noncurrent pair wins over
+    a single total concept (config/sources.yaml documents the priority).
+    A carrying-amount total is used INSTEAD of its components, never
+    added to them. FAIL CLOSED: when nothing resolves, value is None —
+    missing debt must never be read as zero debt.
+    fallback_latest: {"end", "value"} from the legacy single-concept
+    balance-latest path, used only when no instant map was supplied.
+    """
+    if not debt_instants:
+        if fallback_latest is not None:
+            return {"value": fallback_latest["value"], "as_of": fallback_latest["end"],
+                    "method": "balance_latest_single_concept", "components": {}}
+        return {"value": None, "as_of": None, "method": "not_determinable", "components": {}}
+    totals = debt_instants.get("totals") or {}
+    current = debt_instants.get("current") or {}
+    noncurrent = debt_instants.get("noncurrent") or {}
+    dates = sorted({e for grp in (totals, current, noncurrent)
+                    for by_end in grp.values() for e in by_end}, reverse=True)
+    for end in dates:
+        cur = _first_at(current, end)
+        non = _first_at(noncurrent, end)
+        if cur and non:
+            return {"value": cur[1] + non[1], "as_of": end,
+                    "method": "current_plus_noncurrent_pair",
+                    "components": {"current_concept": cur[0], "current_value": cur[1],
+                                   "noncurrent_concept": non[0], "noncurrent_value": non[1]}}
+        tot = _first_at(totals, end)
+        if tot:
+            return {"value": tot[1], "as_of": end,
+                    "method": f"single_total:{tot[0]}",
+                    "components": {"concept": tot[0]}}
+    return {"value": None, "as_of": None, "method": "not_determinable", "components": {}}
+
+
 def _latest_period_value(period_rows):
     """Most recent period's value: max end, then shortest duration (the
     standalone quarter, not the YTD cumulative), then latest filed."""
@@ -136,6 +183,8 @@ def compute_metrics(series, tax_rate_pct):
     ttm_details = {}
     for metric, out_key in (("revenue", "revenue"), ("eps_diluted", "eps_diluted"),
                             ("net_income", "net_income"),
+                            ("operating_income", "operating_income"),
+                            ("interest_expense", "interest_expense"),
                             ("operating_cash_flow", "operating_cash_flow"),
                             ("capex", "capex")):
         annual = _latest(series.get(metric, []))
@@ -191,16 +240,46 @@ def compute_metrics(series, tax_rate_pct):
 
     cash = blat("cash") or 0
     inv = (blat("investments_current") or 0) + (blat("investments_noncurrent") or 0)
-    debt = blat("total_debt") or 0
+    # Total debt: resolved across ALL debt concepts at the latest balance
+    # date. FAIL CLOSED — if it cannot be determined, debt stays None and
+    # every debt-derived figure below is None (sub-scores go missing and
+    # renormalise) instead of flowing through as zero debt.
+    debt_fallback = balance_latest.get("total_debt")
+    if debt_fallback is None and lat("total_debt") is not None:
+        debt_fallback = {"end": _latest(series.get("total_debt", []))["end"],
+                         "value": lat("total_debt")}
+    debt_res = resolve_total_debt(series.get("_debt_instants"), debt_fallback)
+    debt = debt_res["value"]
     out["cash_latest"] = blat("cash")
     out["investments_latest"] = inv if (blat("investments_current") is not None or blat("investments_noncurrent") is not None) else None
-    out["total_debt_latest"] = blat("total_debt")
+    out["total_debt_latest"] = debt
+    out["total_debt_resolution"] = debt_res
+    out["debt_not_determinable_fail_closed"] = debt is None
     out["balance_as_of"] = max((r["end"] for r in balance_latest.values()), default=None)
-    out["net_cash_latest"] = cash + inv - debt
     # Snapshot balance-sheet strength vs trailing revenue (TTM when the
     # TTM build succeeded, else the latest annual).
     rev_snapshot = out.get("revenue_ttm") or latest_rev["value"]
-    out["net_cash_to_revenue"] = out["net_cash_latest"] / rev_snapshot if rev_snapshot else None
+    if debt is None:
+        out["net_cash_latest"] = None
+        out["net_cash_to_revenue"] = None
+        out["leverage_debt_to_revenue_ttm"] = None
+    else:
+        out["net_cash_latest"] = cash + inv - debt
+        out["net_cash_to_revenue"] = out["net_cash_latest"] / rev_snapshot if rev_snapshot else None
+        out["leverage_debt_to_revenue_ttm"] = debt / rev_snapshot if rev_snapshot else None
+    # Interest coverage on the same TTM bridge as the other trailing
+    # figures. Missing (renormalised) when interest expense is absent or
+    # non-positive — a filer with no interest-bearing debt is not awarded
+    # a free perfect score.
+    oi_t, ie_t = out.get("operating_income_ttm"), out.get("interest_expense_ttm")
+    if oi_t is not None and ie_t is not None and ie_t > 0:
+        out["interest_coverage_ttm"] = oi_t / ie_t
+        out["interest_coverage_missing_reason"] = None
+    else:
+        out["interest_coverage_ttm"] = None
+        out["interest_coverage_missing_reason"] = (
+            "operating_income_ttm_missing" if oi_t is None else
+            "interest_expense_ttm_missing_or_nonpositive")
     out["capex_latest"] = lat("capex")
     out["capex_intensity_latest_pct"] = (lat("capex") / latest_rev["value"] * 100) if lat("capex") else None
     out["operating_cash_flow_latest"] = lat("operating_cash_flow")

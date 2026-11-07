@@ -39,7 +39,27 @@ concepts:
   cash: ["CashAndCashEquivalentsAtCarryingValue"]
   investments_current: ["AvailableForSaleSecuritiesDebtSecuritiesCurrent"]
   investments_noncurrent: ["AvailableForSaleSecuritiesDebtSecuritiesNoncurrent"]
-  total_debt: ["DebtAndCapitalLeaseObligations", "LongTermDebtAndCapitalLeaseObligations"]
+  # Total debt is RESOLVED at the latest balance date (metrics.resolve_total_debt),
+  # never taken from a single concept blindly — filers tag borrowings very
+  # differently (CoreWeave reports only DebtInstrumentCarryingAmount in its
+  # 10-Q balance period; its LongTermDebt pair exists only in older periods).
+  # Resolution priority at each candidate date, newest date first:
+  #   (a) a current + noncurrent PAIR from total_debt_current /
+  #       total_debt_noncurrent (first concept in list order with a value
+  #       at that date on each side), summed;
+  #   (b) a single TOTAL concept from the total_debt list below (first in
+  #       list order with a value at that date). A carrying-amount total is
+  #       used INSTEAD of components, never added to them (no double count).
+  # The total_debt list doubles as the annual series for ROIC history.
+  # LongTermDebt sits last: it excludes the current portion, last resort.
+  total_debt: ["DebtAndCapitalLeaseObligations", "LongTermDebtAndCapitalLeaseObligations", "DebtInstrumentCarryingAmount", "Debt", "Borrowings", "LongTermBorrowings", "LongTermDebt"]
+  total_debt_current: ["LongTermDebtCurrent", "DebtCurrent", "LongTermBorrowingsCurrent"]
+  total_debt_noncurrent: ["LongTermDebtNoncurrent", "DebtNoncurrent", "LongTermBorrowingsNoncurrent"]
+  # Finance-lease and operating-lease liabilities are NOT added to total
+  # debt: several total concepts above already embed capital/finance
+  # leases, so adding lease liabilities would double count. The exclusion
+  # is flagged in every run's data_quality.
+  interest_expense: ["InterestExpense", "InterestExpenseDebt", "InterestAndDebtExpense"]
   diluted_shares: ["WeightedAverageNumberOfDilutedSharesOutstanding"]
   eps_diluted: ["EarningsPerShareDiluted"]
   rd_expense: ["ResearchAndDevelopmentExpense"]
