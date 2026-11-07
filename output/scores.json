@@ -591,6 +591,7 @@
     },
     "consensus_eps": "missing_by_design_v1_no_paid_consensus - forward multiples use filed actuals and the config DCF only",
     "beta": "config input - config input (long-run market beta used in prior DD; no free keyless beta source in v1)",
+    "beta_missing": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
     "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
     "peer_failures": [],

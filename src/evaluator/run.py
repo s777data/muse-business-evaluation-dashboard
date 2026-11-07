@@ -92,11 +92,14 @@ def evaluate(symbol, cfg):
     percentiles["revenue"] = scoring.percentile_rank(
         m.get("revenue_ttm") or m.get("revenue_latest"), [r.get("revenue") for r in peer_rows])
 
-    # DCF
-    wacc = dcfmod.build_wacc(cfg["dcf"]["dcf"], ticker["beta"], m.get("market_cap"), m.get("total_debt_latest"))
+    # DCF — beta is a config input; if it is absent the DCF (and the
+    # dcf_upside value sub-score) is treated as missing and the remaining
+    # value weights renormalise in scoring.score_section. No fallback beta.
+    beta = ticker.get("beta")
+    wacc = dcfmod.build_wacc(cfg["dcf"]["dcf"], beta, m.get("market_cap"), m.get("total_debt_latest")) if beta is not None else None
     fcf_base = (m["fcf_latest"] / m["diluted_shares_latest"]) if m.get("fcf_latest") and m.get("diluted_shares_latest") else None
     path = dcfmod.growth_path(cfg["dcf"]["dcf"], m.get("revenue_cagr_5y_pct"))
-    fv = dcfmod.fair_value(fcf_base, path, wacc["wacc_pct"], cfg["dcf"]["dcf"]["terminal_growth_pct"]) if fcf_base else None
+    fv = dcfmod.fair_value(fcf_base, path, wacc["wacc_pct"], cfg["dcf"]["dcf"]["terminal_growth_pct"]) if (fcf_base and wacc) else None
     upside = ((fv["fair_value_per_share"] / price["last_close"] - 1) * 100) if fv else None
 
     # Scoring inputs assembled from computed metrics only
@@ -113,7 +116,8 @@ def evaluate(symbol, cfg):
         "ttm_end": m.get("ttm_end"),
         "ttm_details": m.get("ttm_details"),
         "consensus_eps": "missing_by_design_v1_no_paid_consensus - forward multiples use filed actuals and the config DCF only",
-        "beta": f"config input - {ticker.get('beta_source')}",
+        "beta": f"config input - {ticker.get('beta_source')}" if beta is not None else "missing - no beta in config/tickers.yaml; DCF sub-score missing, value weights renormalised",
+        "beta_missing": beta is None,
         "risk_free_and_erp": "config inputs in config/dcf.yaml",
         "sk_hynix_samsung": cfg["peers"].get("excluded_note"),
         "peer_failures": peer_failures,
@@ -139,7 +143,7 @@ def evaluate(symbol, cfg):
                                "fiscal_year_end": m.get("fiscal_year_end")},
             "concentration": {"source": "SEC EDGAR latest 10-K full text", **filing["filing"]},
             "price": price,
-            "beta": {"value": ticker["beta"], "source": ticker.get("beta_source")},
+            "beta": {"value": ticker.get("beta"), "source": ticker.get("beta_source")},
             "dcf_config": "config/dcf.yaml", "scoring_config": "config/scoring.yaml",
         },
         "kpis": {k: v for k, v in m.items() if k != "fcf_series_by_year"},
@@ -174,8 +178,11 @@ def main(argv):
     print(f"{symbol} snapshot {result['snapshot_date']}  price ${result['dcf']['current_price']:,.2f} "
           f"({result['inputs_with_sources']['price']['source']})")
     print(f"Business {s['business']['total']}/10 | Value {s['value']['total']}/10 | Moat {s['moat']['total']}/10")
-    print(f"DCF fair value ${result['dcf']['fair_value_per_share']:,.2f} "
-          f"({result['dcf']['upside_pct']:+.1f}% vs current, WACC {result['dcf']['wacc']['wacc_pct']}%)")
+    if result["dcf"].get("fair_value_per_share") is not None:
+        print(f"DCF fair value ${result['dcf']['fair_value_per_share']:,.2f} "
+              f"({result['dcf']['upside_pct']:+.1f}% vs current, WACC {result['dcf']['wacc']['wacc_pct']}%)")
+    else:
+        print("DCF fair value unavailable (missing beta in config or missing FCF base); DCF sub-score missing, value weights renormalised")
     print(f"Wrote {out_path}")
     return 0
 

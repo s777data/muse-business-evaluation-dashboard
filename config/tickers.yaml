@@ -16,3 +16,108 @@ tickers:
     currency: USD
     beta: 1.65
     beta_source: "config input (long-run market beta estimate; no free keyless beta source in v1)"
+
+  MOD:
+    name: "Modine Manufacturing Company"
+    cik: "0000067347"
+    exchange: NYSE
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 1.6344
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  VST:
+    name: "Vistra Corp."
+    cik: "0001692819"
+    exchange: NYSE
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 1.4548
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  GRAB:
+    name: "Grab Holdings Limited"
+    cik: "0001855612"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 1.7163
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  CRDO:
+    name: "Credo Technology Group Holding Ltd"
+    cik: "0001807794"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 3.7502
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  FIGR:
+    name: "Figure Technology Solutions, Inc."
+    cik: "0002064124"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 61 weekly return points (2025-09-08 to 2026-11-06)
+    beta: 1.8321
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 61 weekly return points"
+  ORCL:
+    name: "Oracle Corporation"
+    cik: "0001341439"
+    exchange: NYSE
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 1.8612
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  ALHC:
+    name: "Alignment Healthcare, Inc."
+    cik: "0001832466"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 0.5453
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  GLXY:
+    name: "Galaxy Digital Inc."
+    cik: "0001859392"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 78 weekly return points (2025-05-12 to 2026-11-06)
+    beta: 2.4949
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 78 weekly return points"
+  CRWV:
+    name: "CoreWeave, Inc."
+    cik: "0001769628"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 85 weekly return points (2025-03-24 to 2026-11-06)
+    beta: 1.9261
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 85 weekly return points"
+  ASTS:
+    name: "AST SpaceMobile, Inc."
+    cik: "0001780312"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 1.7742
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  SHLS:
+    name: "Shoals Technologies Group, Inc."
+    cik: "0001831651"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 0.7885
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  ONDS:
+    name: "Ondas Inc."
+    cik: "0001646188"
+    exchange: NASDAQ
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 2.2513
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  NKE:
+    name: "NIKE, Inc."
+    cik: "0000320187"
+    exchange: NYSE
+    currency: USD
+    # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
+    beta: 0.9993
+    beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
