@@ -1,0 +1,431 @@
+{
+  "symbol": "NKE",
+  "entity_name": "NIKE, Inc.",
+  "snapshot_date": "2026-11-07",
+  "inputs_with_sources": {
+    "filing_metrics": {
+      "source": "SEC EDGAR XBRL companyfacts",
+      "cik": "0000320187",
+      "fiscal_year_end": "2026-05-31"
+    },
+    "concentration": {
+      "source": "SEC EDGAR latest 10-K full text",
+      "filed": "2026-07-15",
+      "accession": "0000320187-26-000088",
+      "primary_document": "nke-20260531.htm",
+      "url": "https://www.sec.gov/Archives/edgar/data/320187/000032018726000088/nke-20260531.htm"
+    },
+    "price": {
+      "source": "yahoo_chart",
+      "last_close": 38.59000015258789,
+      "last_date": "2026-11-06",
+      "high_52w": 67.77999877929688,
+      "low_52w": 33.869998931884766,
+      "points": 251,
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/NKE?range=1y&interval=1d"
+    },
+    "beta": {
+      "value": 0.9993,
+      "source": "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+    },
+    "dcf_config": "config/dcf.yaml",
+    "scoring_config": "config/scoring.yaml"
+  },
+  "kpis": {
+    "history_years": [
+      "2017-05-31",
+      "2018-05-31",
+      "2019-05-31",
+      "2020-05-31",
+      "2021-05-31",
+      "2022-05-31",
+      "2023-05-31",
+      "2024-05-31",
+      "2025-05-31",
+      "2026-05-31"
+    ],
+    "revenue_latest": 46398000000,
+    "fiscal_year_end": "2026-05-31",
+    "revenue_growth_latest_pct": 0.19218726381480256,
+    "revenue_cagr_5y_pct": 0.8216289449518577,
+    "revenue_cagr_years": 5,
+    "revenue_ttm": 45891000000,
+    "eps_diluted_ttm": 2.09,
+    "net_income_ttm": 3093000000,
+    "operating_cash_flow_ttm": 2781000000,
+    "capex_ttm": 676000000,
+    "ttm_details": {
+      "revenue": {
+        "value": 45891000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 46398000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 11213000000,
+        "ytd_prior": 11720000000,
+        "ttm_end": "2026-08-31"
+      },
+      "eps_diluted": {
+        "value": 2.09,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 2.1,
+        "annual_end": "2026-05-31",
+        "ytd_current": 0.48,
+        "ytd_prior": 0.49,
+        "ttm_end": "2026-08-31"
+      },
+      "net_income": {
+        "value": 3093000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 3108000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 712000000,
+        "ytd_prior": 727000000,
+        "ttm_end": "2026-08-31"
+      },
+      "operating_cash_flow": {
+        "value": 2781000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 2868000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 135000000,
+        "ytd_prior": 222000000,
+        "ttm_end": "2026-08-31"
+      },
+      "capex": {
+        "value": 676000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 684000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 199000000,
+        "ytd_prior": 207000000,
+        "ttm_end": "2026-08-31"
+      }
+    },
+    "ttm_end": "2026-08-31",
+    "fcf_ttm": 2105000000,
+    "diluted_shares_latest_period": 1484200000,
+    "fcf_latest": 2184000000,
+    "gross_margin_latest_pct": 42.913487650329756,
+    "gross_margin_median_5y_pct": 43.52461096901419,
+    "gross_margin_stdev_5y_pts": 1.2033690721153796,
+    "operating_margin_median_5y_pct": null,
+    "fcf_margin_median_5y_pct": 9.484050524512952,
+    "fcf_margin_latest_pct": 4.70709944394155,
+    "cash_latest": 6903000000,
+    "investments_latest": 4763000000,
+    "total_debt_latest": null,
+    "balance_as_of": "2026-08-31",
+    "net_cash_latest": 11666000000,
+    "net_cash_to_revenue": 0.2542110653505045,
+    "capex_latest": 684000000,
+    "capex_intensity_latest_pct": 1.4742014742014742,
+    "operating_cash_flow_latest": 2868000000,
+    "net_income_latest": 3108000000,
+    "rd_expense_latest": null,
+    "eps_diluted_latest": 2.1,
+    "diluted_shares_latest": 1481000000,
+    "roic_median_5y_pct": null,
+    "roic_series_pct": [],
+    "shares_used_for_market_cap": 1484200000,
+    "revenue_used_for_multiples": 45891000000,
+    "multiples_basis": "ttm",
+    "market_cap": 57275278226.47095,
+    "price_to_sales": 1.2480721323673694,
+    "ev_to_sales": 0.9938610670168649,
+    "eps_used_for_trailing_pe": 2.09,
+    "trailing_pe": 18.464114905544445,
+    "fcf_used_for_yield": 2105000000,
+    "fcf_yield_latest_pct": 3.6752331288146074,
+    "discount_from_52w_high_pct": -43.0657998707798,
+    "price_vs_52w_low_pct": 13.935640299828233,
+    "dcf_upside_pct": -57.96838575831862,
+    "customer_concentration_score": 4.0,
+    "revenue_percentile_vs_peers": null
+  },
+  "fcf_series_by_year": {
+    "2008-05-31": 1487100000,
+    "2009-05-31": 1280000000,
+    "2010-05-31": 2829000000,
+    "2011-05-31": 1380000000,
+    "2012-05-31": 1261000000,
+    "2013-05-31": 2434000000,
+    "2014-05-31": 2133000000,
+    "2015-05-31": 3717000000,
+    "2016-05-31": 2256000000,
+    "2017-05-31": 2741000000,
+    "2018-05-31": 3927000000,
+    "2019-05-31": 4784000000,
+    "2020-05-31": 1399000000,
+    "2021-05-31": 5962000000,
+    "2022-05-31": 4430000000,
+    "2023-05-31": 4872000000,
+    "2024-05-31": 6617000000,
+    "2025-05-31": 3268000000,
+    "2026-05-31": 2184000000
+  },
+  "scores": {
+    "business": {
+      "subscores": {
+        "revenue_growth_latest_pct": {
+          "value": 0.1922,
+          "score": 3.023,
+          "weight": 0.15
+        },
+        "revenue_cagr_5y_pct": {
+          "value": 0.8216,
+          "score": 3.205,
+          "weight": 0.1
+        },
+        "gross_margin_median_5y_pct": {
+          "value": 43.5246,
+          "score": 6.303,
+          "weight": 0.2
+        },
+        "fcf_margin_median_5y_pct": {
+          "value": 9.4841,
+          "score": 5.345,
+          "weight": 0.15
+        },
+        "net_cash_to_revenue": {
+          "value": 0.2542,
+          "score": 6.525,
+          "weight": 0.15
+        },
+        "gross_margin_stdev_5y_pts": {
+          "value": 1.2034,
+          "score": 9.519,
+          "weight": 0.1
+        }
+      },
+      "total": 5.61,
+      "missing_metrics": [
+        "operating_margin_median_5y_pct"
+      ],
+      "weights_renormalised_over": 0.85
+    },
+    "value": {
+      "subscores": {
+        "trailing_pe": {
+          "value": 18.4641,
+          "score": 5.807,
+          "weight": 0.2
+        },
+        "price_to_sales": {
+          "value": 1.2481,
+          "score": 8.628,
+          "weight": 0.15
+        },
+        "ev_to_sales": {
+          "value": 0.9939,
+          "score": 9.012,
+          "weight": 0.1
+        },
+        "fcf_yield_latest_pct": {
+          "value": 3.6752,
+          "score": 5.175,
+          "weight": 0.2
+        },
+        "dcf_upside_pct": {
+          "value": -57.9684,
+          "score": 0.0,
+          "weight": 0.25
+        },
+        "discount_from_52w_high_pct": {
+          "value": -43.0658,
+          "score": 7.307,
+          "weight": 0.1
+        }
+      },
+      "total": 5.12,
+      "missing_metrics": [],
+      "weights_renormalised_over": 1.0
+    },
+    "moat": {
+      "subscores": {
+        "gross_margin_median_5y_pct": {
+          "value": 43.5246,
+          "score": 6.303,
+          "weight": 0.2
+        },
+        "gross_margin_stdev_5y_pts": {
+          "value": 1.2034,
+          "score": 9.519,
+          "weight": 0.15
+        },
+        "customer_concentration_score": {
+          "value": 4.0,
+          "score": 4.0,
+          "weight": 0.15
+        },
+        "capex_intensity_latest_pct": {
+          "value": 1.4742,
+          "score": 1.59,
+          "weight": 0.15
+        }
+      },
+      "total": 5.43,
+      "missing_metrics": [
+        "roic_median_5y_pct",
+        "revenue_percentile_vs_peers"
+      ],
+      "weights_renormalised_over": 0.65
+    }
+  },
+  "dcf": {
+    "fcf_per_share_base": 1.4747,
+    "growth_path_pct": [
+      0.8216,
+      0.6573,
+      0.493,
+      0.3287,
+      0.1643
+    ],
+    "wacc": {
+      "cost_of_equity_pct": 9.296,
+      "cost_of_debt_after_tax_pct": 3.825,
+      "equity_weight": 1.0,
+      "debt_weight": 0.0,
+      "wacc_pct": 9.296,
+      "inputs": {
+        "risk_free_rate_pct": 4.3,
+        "equity_risk_premium_pct": 5.0,
+        "beta": 0.9993,
+        "pre_tax_cost_of_debt_pct": 4.5,
+        "tax_rate_pct": 15.0
+      }
+    },
+    "fair_value_per_share": 16.22,
+    "pv_of_projected_fcf": 5.79,
+    "pv_of_terminal_value": 10.42,
+    "projected_fcf_per_share": [
+      1.4868,
+      1.4966,
+      1.5039,
+      1.5089,
+      1.5114
+    ],
+    "current_price": 38.59000015258789,
+    "upside_pct": -57.97,
+    "distance_dollars": -22.37
+  },
+  "peers": {
+    "rows": [],
+    "percentile_ranks_for_subject": {
+      "gross_margin_latest_pct": null,
+      "fcf_margin_latest_pct": null,
+      "price_to_sales": null,
+      "revenue": null
+    },
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+  },
+  "moat_replicability_checks": [
+    {
+      "check": "new_entrant_capex_barrier",
+      "status": "fail",
+      "evidence": "latest FY capex $684,000,000 vs config barrier $10,000,000,000"
+    },
+    {
+      "check": "product_fungibility_risk (high margin volatility = commodity-like pricing)",
+      "status": "not_flagged",
+      "evidence": "gross-margin stdev over last 5 FYs = 1.2 pts (config flag threshold 15 pts)"
+    },
+    {
+      "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
+      "status": "pass",
+      "evidence": "0 US-listed EDGAR peers in config peer set"
+    },
+    {
+      "check": "no_single_customer_dependency",
+      "status": "fail_or_unknown",
+      "evidence": "RETAIL STORES NUMBER NIKE Brand factory stores 537 NIKE Brand in-line stores (including employee-only stores) 50 Converse stores (including factory stores) 54 TOTAL 641 2026 FORM 10-K 2 Table of Contents SIGNIFICANT CUSTOMER No customer accounted for 10% or more of our consolidated Revenues during fiscal 2026."
+    },
+    {
+      "check": "switching_costs / contract lock-in",
+      "status": "not_evaluated_v1",
+      "evidence": "No structured free source in v1 quantifies switching costs; flagged, not scored by proxy."
+    }
+  ],
+  "customer_concentration": {
+    "single_customer": {
+      "quote": "RETAIL STORES NUMBER NIKE Brand factory stores 537 NIKE Brand in-line stores (including employee-only stores) 50 Converse stores (including factory stores) 54 TOTAL 641 2026 FORM 10-K 2 Table of Contents SIGNIFICANT CUSTOMER No customer accounted for 10% or more of our consolidated Revenues during fiscal 2026.",
+      "threshold_pct_in_sentence": 10.0,
+      "no_customer_at_or_above_threshold": false,
+      "max_single_customer_pct": 10.0
+    },
+    "top_ten": null,
+    "data_center": null
+  },
+  "concentration_score": 4.0,
+  "data_quality": {
+    "trailing_multiples_basis": "ttm",
+    "ttm_end": "2026-08-31",
+    "ttm_details": {
+      "revenue": {
+        "value": 45891000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 46398000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 11213000000,
+        "ytd_prior": 11720000000,
+        "ttm_end": "2026-08-31"
+      },
+      "eps_diluted": {
+        "value": 2.09,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 2.1,
+        "annual_end": "2026-05-31",
+        "ytd_current": 0.48,
+        "ytd_prior": 0.49,
+        "ttm_end": "2026-08-31"
+      },
+      "net_income": {
+        "value": 3093000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 3108000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 712000000,
+        "ytd_prior": 727000000,
+        "ttm_end": "2026-08-31"
+      },
+      "operating_cash_flow": {
+        "value": 2781000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 2868000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 135000000,
+        "ytd_prior": 222000000,
+        "ttm_end": "2026-08-31"
+      },
+      "capex": {
+        "value": 676000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 684000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 199000000,
+        "ytd_prior": 207000000,
+        "ttm_end": "2026-08-31"
+      }
+    },
+    "consensus_eps": "missing_by_design_v1_no_paid_consensus - forward multiples use filed actuals and the config DCF only",
+    "beta": "config input - computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points",
+    "beta_missing": false,
+    "risk_free_and_erp": "config inputs in config/dcf.yaml",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "peer_failures": [],
+    "missing_business_metrics": [
+      "operating_margin_median_5y_pct"
+    ],
+    "missing_value_metrics": [],
+    "missing_moat_metrics": [
+      "roic_median_5y_pct",
+      "revenue_percentile_vs_peers"
+    ],
+    "peak_cycle_warning": false,
+    "switching_costs": "not_evaluated_v1"
+  },
+  "explanations": {
+    "business": "Business score is 5.61/10, driven mainly by gross margin stdev 5y pts scored 9.519/10 (value 1.2034) and net cash to revenue scored 6.525/10 (value 0.2542). The main drags were revenue growth latest pct scored 3.023/10 (value 0.1922) and revenue cagr 5y pct scored 3.205/10 (value 0.8216).",
+    "value": "Value score is 5.12/10, driven mainly by ev to sales scored 9.012/10 (value 0.9939) and price to sales scored 8.628/10 (value 1.2481). The main drags were dcf upside pct scored 0.0/10 (value -57.9684) and fcf yield latest pct scored 5.175/10 (value 3.6752). The DCF fair value is $16.22 vs the current $38.59 (-58.0%).",
+    "moat": "Moat score is 5.43/10, driven mainly by gross margin stdev 5y pts scored 9.519/10 (value 1.2034) and gross margin median 5y pct scored 6.303/10 (value 43.5246). The main drags were capex intensity latest pct scored 1.59/10 (value 1.4742) and customer concentration score scored 4.0/10 (value 4.0)."
+  }
+}
