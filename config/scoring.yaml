@@ -13,14 +13,17 @@ business:
   # revenue_growth (0.15->0.10), revenue_cagr (0.10->0.075),
   # gross_margin_median (0.20->0.175) and net_cash_to_revenue
   # (0.15->0.10); all nine weights still sum to exactly 1.0.
+  # (v3 added a tenth — dilution, 0.05 — funded from revenue_growth and
+  # gross_margin_median; see the dilution block. FCF margin and the FCF
+  # figures elsewhere are now SBC-adjusted owner FCF; see sources.yaml.)
   revenue_growth_latest_pct:
-    weight: 0.10
+    weight: 0.075
     anchors: [[-20, 0], [0, 3], [25, 6], [75, 8.5], [150, 10]]
   revenue_cagr_5y_pct:
     weight: 0.075
     anchors: [[-5, 1], [0, 3], [10, 5.5], [20, 7.5], [30, 9], [40, 10]]
   gross_margin_median_5y_pct:
-    weight: 0.175
+    weight: 0.15
     anchors: [[0, 0], [15, 2.5], [30, 4.5], [45, 6.5], [60, 8.5], [75, 10]]
   operating_margin_median_5y_pct:
     weight: 0.15
@@ -34,6 +37,17 @@ business:
   gross_margin_stdev_5y_pts:
     weight: 0.10
     anchors: [[0, 10], [5, 8], [10, 6], [20, 3.5], [30, 1.5], [40, 0]]
+  # Dilution (v3): CAGR of diluted weighted-average shares over the
+  # available annual span (up to 5 years). Share count is the one claim
+  # on the business that compounds silently — SBC, converts and equity
+  # raises all land here, net of buybacks. A shrinking count (-3%/yr,
+  # a real buyback) scores 10; flat scores 8.5; +5%/yr halves an owner's
+  # claim in ~14 years and scores 3.5; +10%/yr or worse approaches 0.
+  # Weight 0.05 is funded by gross_margin_median (0.175->0.15) and
+  # revenue_growth (0.10->0.075); all ten weights still sum to 1.0.
+  dilution_share_count_growth_pct:
+    weight: 0.05
+    anchors: [[-3, 10], [0, 8.5], [2, 6], [5, 3.5], [10, 1], [20, 0]]
   # Leverage: gross debt against trailing revenue. A debt-free filer
   # scores 10; debt equal to a full year of revenue (1.0x) is mid-pack;
   # 3x revenue is distress territory for all but regulated balance

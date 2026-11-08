@@ -60,6 +60,14 @@ concepts:
   # leases, so adding lease liabilities would double count. The exclusion
   # is flagged in every run's data_quality.
   interest_expense: ["InterestExpense", "InterestExpenseDebt", "InterestAndDebtExpense"]
+  # Stock-based compensation (the cash-flow-statement add-back line).
+  # ShareBasedCompensation is attested for every scored filer in the set
+  # (checked 2026-11-07 against companyfacts); AllocatedShareBased-
+  # CompensationExpense is the attested fallback (expense allocated by
+  # function) for a filer that drops the plain tag. SBC is subtracted
+  # from FCF to get owner FCF — see metrics.compute_metrics. GRAB (IFRS)
+  # reports neither and fails closed.
+  share_based_compensation: ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"]
   diluted_shares: ["WeightedAverageNumberOfDilutedSharesOutstanding"]
   eps_diluted: ["EarningsPerShareDiluted"]
   rd_expense: ["ResearchAndDevelopmentExpense"]

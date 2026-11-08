@@ -204,6 +204,82 @@ class TestDebtResolution(unittest.TestCase):
         self.assertAlmostEqual(sum(s["weight"] for s in business.values()), 1.0, places=9)
         self.assertIn("leverage_debt_to_revenue_ttm", business)
         self.assertIn("interest_coverage_ttm", business)
+        self.assertIn("dilution_share_count_growth_pct", business)
+
+
+def _flow_series(shares, with_sbc=True):
+    ends = ["2023-12-31", "2024-12-31", "2025-12-31"]
+    series = {
+        "revenue": [{"end": e, "value": v} for e, v in zip(ends, [100.0, 110.0, 120.0])],
+        "operating_cash_flow": [{"end": e, "value": v} for e, v in zip(ends, [30.0, 33.0, 36.0])],
+        "capex": [{"end": e, "value": 10.0} for e in ends],
+        "diluted_shares": [{"end": e, "value": v} for e, v in zip(ends, shares)],
+        "_periods": {},
+        "_balance_latest": {},
+        "_debt_instants": {"totals": {}, "current": {}, "noncurrent": {}},
+    }
+    if with_sbc:
+        series["share_based_compensation"] = [{"end": e, "value": 5.0} for e in ends]
+    return series
+
+
+class TestV3SBCAndDilution(unittest.TestCase):
+    """v3: SBC-adjusted owner FCF + dilution sub-score."""
+
+    def test_sbc_adjusted_fcf_and_margin(self):
+        m = compute_metrics(_flow_series([100.0, 110.0, 121.0]), 15.0)
+        # Raw FCF latest = 36 - 10 = 26; owner FCF = 26 - 5 = 21.
+        self.assertEqual(m["fcf_raw_latest"], 26.0)
+        self.assertEqual(m["fcf_latest"], 21.0)
+        self.assertEqual(m["fcf_adjusted_latest"], 21.0)
+        self.assertEqual(m["sbc_latest"], 5.0)
+        self.assertFalse(m["sbc_not_reported_fcf_unadjusted_not_used"])
+        # Adjusted margins: 15/100, 18/110, 21/120 -> median 18/110.
+        self.assertAlmostEqual(m["fcf_margin_median_5y_pct"], 18.0 / 110.0 * 100, places=6)
+        self.assertAlmostEqual(m["sbc_pct_of_revenue_latest"], 5.0 / 120.0 * 100, places=6)
+
+    def test_no_sbc_reported_fails_closed(self):
+        m = compute_metrics(_flow_series([100.0, 110.0, 121.0], with_sbc=False), 15.0)
+        self.assertTrue(m["sbc_not_reported_fcf_unadjusted_not_used"])
+        self.assertIsNone(m["fcf_latest"])
+        self.assertIsNone(m["fcf_margin_median_5y_pct"])
+        self.assertEqual(m["fcf_raw_latest"], 26.0)  # raw still disclosed
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertIn("fcf_margin_median_5y_pct", business["missing_metrics"])
+        self.assertNotIn("fcf_margin_median_5y_pct", business["subscores"])
+
+    def test_dilution_rising_share_count(self):
+        m = compute_metrics(_flow_series([100.0, 110.0, 121.0]), 15.0)
+        # 100 -> 121 over ~2 years = ~+10%/yr CAGR.
+        self.assertAlmostEqual(m["dilution_share_count_growth_pct"], 10.0, delta=0.15)
+        self.assertEqual(m["dilution_annual_points"], 3)
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertAlmostEqual(
+            business["subscores"]["dilution_share_count_growth_pct"]["score"], 1.0, delta=0.1)
+
+    def test_dilution_falling_share_count_scores_high(self):
+        m = compute_metrics(_flow_series([121.0, 110.0, 100.0]), 15.0)
+        self.assertLess(m["dilution_share_count_growth_pct"], -3.0)
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertEqual(business["subscores"]["dilution_share_count_growth_pct"]["score"], 10)
+
+    def test_dilution_units_break_fails_closed(self):
+        # ONDS-shaped: newest filing reports shares in thousands, so the
+        # series collapses ~1000x in one step. Not a buyback — missing.
+        series = _flow_series([52.74e6, 69917.0, 221769.0])
+        m = compute_metrics(series, 15.0)
+        self.assertIsNone(m["dilution_share_count_growth_pct"])
+        self.assertTrue(m["dilution_share_series_discontinuity"])
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertIn("dilution_share_count_growth_pct", business["missing_metrics"])
+
+    def test_dilution_single_point_missing(self):
+        series = _flow_series([100.0, 110.0, 121.0])
+        series["diluted_shares"] = [{"end": "2025-12-31", "value": 121.0}]
+        m = compute_metrics(series, 15.0)
+        self.assertIsNone(m["dilution_share_count_growth_pct"])
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertIn("dilution_share_count_growth_pct", business["missing_metrics"])
 
 
 if __name__ == "__main__":

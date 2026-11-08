@@ -186,6 +186,7 @@ def compute_metrics(series, tax_rate_pct):
                             ("operating_income", "operating_income"),
                             ("interest_expense", "interest_expense"),
                             ("operating_cash_flow", "operating_cash_flow"),
+                            ("share_based_compensation", "share_based_compensation"),
                             ("capex", "capex")):
         annual = _latest(series.get(metric, []))
         if not annual:
@@ -199,8 +200,19 @@ def compute_metrics(series, tax_rate_pct):
     out["ttm_details"] = ttm_details
     out["ttm_end"] = (ttm_details.get("revenue") or {}).get("ttm_end")
 
+    # TTM FCF is SBC-adjusted owner FCF (v3): operating cash flow adds
+    # stock comp back, so raw OCF - capex treats equity pay as free.
+    # Fail closed — when SBC is reported annually but its TTM bridge
+    # cannot be built, or no SBC is reported at all, fcf_ttm stays None
+    # (flagged below via sbc_not_reported_fcf_unadjusted_not_used and
+    # sbc_ttm_unavailable) rather than silently using the raw figure.
     ocf_t, capex_t = out.get("operating_cash_flow_ttm"), out.get("capex_ttm")
-    out["fcf_ttm"] = (ocf_t - capex_t) if (ocf_t is not None and capex_t is not None) else None
+    sbc_t = out.get("share_based_compensation_ttm")
+    out["sbc_ttm"] = sbc_t
+    out["fcf_raw_ttm"] = (ocf_t - capex_t) if (ocf_t is not None and capex_t is not None) else None
+    out["fcf_ttm"] = (ocf_t - capex_t - sbc_t) if (
+        ocf_t is not None and capex_t is not None and sbc_t is not None) else None
+    out["sbc_ttm_unavailable"] = bool(series.get("share_based_compensation")) and sbc_t is None
 
     shares_period = _latest_period_value(periods.get("diluted_shares"))
     out["diluted_shares_latest_period"] = shares_period
@@ -214,10 +226,28 @@ def compute_metrics(series, tax_rate_pct):
     gm_series = _aligned_ratio(gp_series, rev)
     om_series = _aligned_ratio(series.get("operating_income", []), rev)
     ocf, capex = _by_end(series.get("operating_cash_flow", [])), _by_end(series.get("capex", []))
+    sbc_by_end = _by_end(series.get("share_based_compensation", []))
     rev_by_end = _by_end(rev)
-    fcf_by_end = {e: ocf[e] - capex[e] for e in ocf if e in capex}
+    fcf_raw_by_end = {e: ocf[e] - capex[e] for e in ocf if e in capex}
+    # Owner FCF (v3): subtract stock-based compensation year by year.
+    # Adjusted FCF exists ONLY for years where SBC is reported; if no
+    # year reports SBC the FCF margin sub-score goes missing (fail
+    # closed) instead of falling back to the unadjusted figure.
+    fcf_by_end = {e: fcf_raw_by_end[e] - sbc_by_end[e]
+                  for e in sorted(fcf_raw_by_end) if e in sbc_by_end}
+    out["sbc_latest"] = sbc_by_end[max(sbc_by_end)] if sbc_by_end else None
+    # The fail-closed flag is specific: it means SBC was never reported,
+    # so no adjusted year exists and the unadjusted figure is NOT used
+    # as a fallback. (A filer can also lack adjusted years because it
+    # files no OCF/capex series at all — that shows in fcf_adjusted_years
+    # and the missing-metrics list, not in this flag.)
+    out["sbc_not_reported_fcf_unadjusted_not_used"] = not sbc_by_end
+    out["fcf_adjusted_years"] = sorted(fcf_by_end)
+    out["fcf_raw_latest"] = fcf_raw_by_end[max(fcf_raw_by_end)] if fcf_raw_by_end else None
+    out["fcf_raw_series_by_year"] = {e: fcf_raw_by_end[e] for e in sorted(fcf_raw_by_end)}
     fcfm_series = [(e, fcf_by_end[e] / rev_by_end[e] * 100) for e in sorted(fcf_by_end) if rev_by_end.get(e)]
     out["fcf_latest"] = fcf_by_end[max(fcf_by_end)] if fcf_by_end else None
+    out["fcf_adjusted_latest"] = out["fcf_latest"]
     out["fcf_series_by_year"] = {e: fcf_by_end[e] for e in sorted(fcf_by_end)}
 
     gm_vals = [v for _, v in gm_series]
@@ -287,6 +317,43 @@ def compute_metrics(series, tax_rate_pct):
     out["rd_expense_latest"] = lat("rd_expense")
     out["eps_diluted_latest"] = lat("eps_diluted")
     out["diluted_shares_latest"] = lat("diluted_shares")
+    # SBC burden on the latest adjusted year, for transparency.
+    if out.get("sbc_latest") is not None and fcf_by_end:
+        sbc_end = max(fcf_by_end)
+        out["sbc_pct_of_revenue_latest"] = (
+            sbc_by_end[sbc_end] / rev_by_end[sbc_end] * 100) if rev_by_end.get(sbc_end) else None
+    else:
+        out["sbc_pct_of_revenue_latest"] = None
+
+    # Dilution: CAGR of the annual diluted weighted-average share count
+    # over the available span, up to 5 years back from the latest annual
+    # point. Needs >= 2 annual points; with exactly 2 it is the 1-year
+    # growth rate. Missing (renormalised) below that — never guessed.
+    share_rows = [r for r in series.get("diluted_shares", []) if r.get("value")]
+    dil_pct, dil_span, dil_points = None, None, len(share_rows)
+    dil_discontinuity = False
+    if len(share_rows) >= 2:
+        latest_row = share_rows[-1]
+        cutoff = _day(latest_row["end"]).toordinal() - int(5 * 365.25)
+        window = [r for r in share_rows if _day(r["end"]).toordinal() >= cutoff]
+        # Continuity guard: a >5x (or <0.2x) single-year jump in the
+        # filed share series is a split that older filings never
+        # restated, or a units break in the newest filing (shares vs
+        # thousands) — not dilution or buybacks. Fail closed: dilution
+        # goes missing and is flagged rather than scored off the break.
+        dil_discontinuity = any(
+            (b["value"] / a["value"] > 5 or b["value"] / a["value"] < 0.2)
+            for a, b in zip(window, window[1:]) if a["value"] > 0)
+        earliest_row = window[0]
+        span_days = (_day(latest_row["end"]) - _day(earliest_row["end"])).days
+        if not dil_discontinuity and span_days > 0 and earliest_row["value"] > 0:
+            dil_span = span_days / 365.25
+            dil_pct = ((latest_row["value"] / earliest_row["value"]) ** (1 / dil_span) - 1) * 100
+            dil_points = len(window)
+    out["dilution_share_count_growth_pct"] = dil_pct
+    out["dilution_span_years"] = round(dil_span, 2) if dil_span is not None else None
+    out["dilution_annual_points"] = dil_points if dil_pct is not None else None
+    out["dilution_share_series_discontinuity"] = dil_discontinuity
 
     # Through-cycle ROIC: operating income after config tax, over invested
     # capital (equity + debt - cash - investments), aligned per year, median.

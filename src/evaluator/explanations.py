@@ -29,6 +29,27 @@ def leverage_note(scored):
             "excluded: filed debt or interest data could not be determined.")
 
 
+def dilution_note(scored, metrics):
+    """Generic dilution / SBC sentence for the Business explanation:
+    names the dilution sub-score and the SBC adjustment when present,
+    or states plainly that they were excluded."""
+    subs = scored.get("subscores", {})
+    entry = subs.get("dilution_share_count_growth_pct")
+    parts = []
+    if entry:
+        span = metrics.get("dilution_span_years")
+        parts.append(f"Diluted share count changed {entry['value']:+}%/yr"
+                     + (f" over {span} years" if span else "")
+                     + f", scored {entry['score']}/10")
+    if metrics.get("sbc_not_reported_fcf_unadjusted_not_used"):
+        parts.append("no stock-based compensation was reported, so the FCF margin "
+                     "sub-score was excluded rather than computed on unadjusted FCF")
+    elif metrics.get("sbc_pct_of_revenue_latest") is not None:
+        parts.append(f"FCF is SBC-adjusted owner FCF (stock comp was "
+                     f"{metrics['sbc_pct_of_revenue_latest']:.1f}% of revenue in the latest year)")
+    return (" " + "; ".join(parts) + ".") if parts else ""
+
+
 def explain(section_name, scored, extra=""):
     subs = scored.get("subscores", {})
     total = scored.get("total")
