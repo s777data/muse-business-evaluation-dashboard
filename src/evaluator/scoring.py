@@ -62,3 +62,19 @@ def percentile_rank(value, peer_values):
     below = sum(1 for v in vals if v < value)
     equal = sum(1 for v in vals if v == value)
     return round((below + 0.5 * equal) / len(vals) * 100, 1)
+
+
+def cheapness_percentile(value, peer_values):
+    """Cheapness percentile of the subject's multiple (e.g. EV/S) within
+    its group, subject INCLUDED in the group size:
+        (peers with a HIGHER value + 0.5 x ties incl. self) / group x 100
+    The cheapest member approaches 100, the most expensive approaches 0.
+    Same mid-rank convention as percentile_rank, inverted and with the
+    subject counted in the denominator."""
+    if value is None:
+        return None
+    vals = [v for v in peer_values if v is not None]
+    group = [value] + vals
+    higher = sum(1 for v in vals if v > value)
+    ties = sum(1 for v in group if v == value)
+    return round((higher + 0.5 * ties) / len(group) * 100, 1)

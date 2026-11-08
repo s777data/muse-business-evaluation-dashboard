@@ -62,9 +62,15 @@ def evaluate(symbol, cfg):
     concentration = filing["concentration"]
     conc_score = scoring.concentration_score(concentration, cfg["scoring"]["concentration_rules"])
 
-    # Peers (EDGAR + free price feed), percentile ranks for MU
+    # Peers: the subject's sector group from config/peers.yaml (EDGAR +
+    # free price feed). The group drives the relative EV/S value
+    # sub-score, the moat revenue percentile, and display-only moat
+    # percentile ranks.
+    peers_cfg = cfg["peers"]
+    group_name = (peers_cfg.get("subjects") or {}).get(symbol)
+    peer_defs = (peers_cfg.get("groups") or {}).get(group_name, []) if group_name else []
     peer_rows, peer_failures = [], []
-    for peer in cfg["peers"]["peers"].get(symbol, []):
+    for peer in peer_defs:
         try:
             _, pseries = edgar.get_company_metrics(cfg["sources"], peer["cik"])
             pm = metmod.compute_metrics(pseries, tax)
@@ -77,9 +83,14 @@ def evaluate(symbol, cfg):
                               "rationale": peer["rationale"],
                               "revenue": pm.get("revenue_ttm") or pm.get("revenue_latest"),
                               "revenue_annual": pm.get("revenue_latest"),
+                              "revenue_ttm": pm.get("revenue_ttm"),
                               "gross_margin_latest_pct": pm.get("gross_margin_latest_pct"),
+                              "gross_margin_median_5y_pct": pm.get("gross_margin_median_5y_pct"),
+                              "roic_median_5y_pct": pm.get("roic_median_5y_pct"),
                               "fcf_margin_latest_pct": pm.get("fcf_margin_latest_pct"),
+                              "fcf_margin_median_5y_pct": pm.get("fcf_margin_median_5y_pct"),
                               "price_to_sales": pm.get("price_to_sales"),
+                              "ev_to_sales": pm.get("ev_to_sales"),
                               "price": pprice})
         except Exception as exc:
             peer_failures.append({"symbol": peer["symbol"], "error": str(exc)})
@@ -91,6 +102,24 @@ def evaluate(symbol, cfg):
     # Scale percentile on the same TTM basis as the multiples.
     percentiles["revenue"] = scoring.percentile_rank(
         m.get("revenue_ttm") or m.get("revenue_latest"), [r.get("revenue") for r in peer_rows])
+    # Display-only moat percentile ranks vs the subject's own group
+    # (NOT scored — the moat score keeps its absolute anchors).
+    for key in ("gross_margin_median_5y_pct", "roic_median_5y_pct",
+                "fcf_margin_median_5y_pct", "revenue_ttm"):
+        subject_val = m.get(key) if key != "revenue_ttm" else (
+            m.get("revenue_ttm") or m.get("revenue_latest"))
+        percentiles[key] = scoring.percentile_rank(subject_val, [r.get(key) for r in peer_rows])
+
+    # Peer-relative EV/S (v4 value sub-score): cheapness percentile of
+    # the subject's EV/S within its group, subject included in the
+    # group size. Fail closed below the configured minimum group size.
+    min_group = peers_cfg.get("relative_ev_to_sales_min_group", 4)
+    peer_evs = [r.get("ev_to_sales") for r in peer_rows if r.get("ev_to_sales") is not None]
+    evs_group_size = (1 if m.get("ev_to_sales") is not None else 0) + len(peer_evs)
+    relative_evs = scoring.cheapness_percentile(m.get("ev_to_sales"), peer_evs)
+    if evs_group_size < min_group:
+        relative_evs = None
+    m["relative_ev_to_sales_percentile"] = relative_evs
 
     # DCF — beta is a config input; if it is absent the DCF (and the
     # dcf_upside value sub-score) is treated as missing and the remaining
@@ -132,6 +161,17 @@ def evaluate(symbol, cfg):
         "dilution_share_series_discontinuity": bool(m.get("dilution_share_series_discontinuity")),
         "risk_free_and_erp": "config inputs in config/dcf.yaml",
         "sk_hynix_samsung": cfg["peers"].get("excluded_note"),
+        "negative_trailing_pe_not_scored": bool(m.get("negative_trailing_pe_not_scored")),
+        "peer_group": {"name": group_name,
+                       "members_evaluated": len(peer_rows),
+                       "members_with_ev_to_sales": evs_group_size,
+                       "relative_ev_to_sales_min_group": min_group,
+                       "relative_ev_to_sales_percentile": relative_evs,
+                       "relative_ev_to_sales_missing_reason": (
+                           None if relative_evs is not None else
+                           ("no_peer_group_configured" if not group_name else
+                            ("subject_ev_to_sales_missing" if m.get("ev_to_sales") is None else
+                             "group_below_minimum_size")))},
         "peer_failures": peer_failures,
         "missing_business_metrics": business["missing_metrics"],
         "missing_value_metrics": value["missing_metrics"],
@@ -168,7 +208,8 @@ def evaluate(symbol, cfg):
                 "current_price": price["last_close"],
                 "upside_pct": round(upside, 2) if upside is not None else None,
                 "distance_dollars": round(fv["fair_value_per_share"] - price["last_close"], 2) if fv else None},
-        "peers": {"rows": peer_rows, "percentile_ranks_for_subject": percentiles,
+        "peers": {"group": group_name, "rows": peer_rows,
+                  "percentile_ranks_for_subject": percentiles,
                   "excluded_note": cfg["peers"].get("excluded_note")},
         "moat_replicability_checks": _moat_checks(m, concentration, len(peer_rows), sc["moat_checks"]),
         "customer_concentration": concentration,

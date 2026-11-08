@@ -108,16 +108,40 @@ def _first_at(group, end):
     return None
 
 
+def _debt_families(debt_instants):
+    """Family maps for resolution: {name: (current_map, noncurrent_map)}
+    where each map is {concept: {end: value}}. Accepts the v4 structure
+    ({"families": {name: {"current": ..., "noncurrent": ...}}}) and the
+    legacy flat structure ({"current": ..., "noncurrent": ...}), which is
+    treated as a single family named "primary"."""
+    fams = {}
+    for name, fam in (debt_instants.get("families") or {}).items():
+        fams[name] = (fam.get("current") or {}, fam.get("noncurrent") or {})
+    if debt_instants.get("current") or debt_instants.get("noncurrent"):
+        fams.setdefault("primary", (debt_instants.get("current") or {},
+                                    debt_instants.get("noncurrent") or {}))
+    return fams
+
+
 def resolve_total_debt(debt_instants, fallback_latest=None):
     """Resolve total debt at the latest determinable balance date.
 
-    debt_instants: {"totals": {concept: {end: value}}, "current": {...},
-    "noncurrent": {...}} as built by edgar.get_company_metrics. Dates are
-    tried newest first; at each date a current+noncurrent pair wins over
-    a single total concept (config/sources.yaml documents the priority).
-    A carrying-amount total is used INSTEAD of its components, never
-    added to them. FAIL CLOSED: when nothing resolves, value is None —
-    missing debt must never be read as zero debt.
+    debt_instants: {"totals": {concept: {end: value}},
+    "grand_totals": {concept: {end: value}}, "families": {name:
+    {"current": {...}, "noncurrent": {...}}}} as built by
+    edgar.get_company_metrics (a legacy flat {"current", "noncurrent"}
+    map is treated as one family). Dates are tried newest first; at each
+    date (config/sources.yaml documents the priority):
+      (a) a carrying-amount GRAND TOTAL (e.g.
+          DebtInstrumentCarryingAmount) wins and REPLACES all
+          components — never added to them;
+      (b) FAMILY PAIRS summed across families: for each debt family
+          (bank/debt, notes payable) with both a current and a
+          noncurrent value at the date, take the pair sum; families
+          coexist on one balance sheet, so the sums add;
+      (c) a single TOTAL concept (first in config list order).
+    FAIL CLOSED: when nothing resolves, value is None — missing debt
+    must never be read as zero debt.
     fallback_latest: {"end", "value"} from the legacy single-concept
     balance-latest path, used only when no instant map was supplied.
     """
@@ -127,18 +151,42 @@ def resolve_total_debt(debt_instants, fallback_latest=None):
                     "method": "balance_latest_single_concept", "components": {}}
         return {"value": None, "as_of": None, "method": "not_determinable", "components": {}}
     totals = debt_instants.get("totals") or {}
-    current = debt_instants.get("current") or {}
-    noncurrent = debt_instants.get("noncurrent") or {}
-    dates = sorted({e for grp in (totals, current, noncurrent)
-                    for by_end in grp.values() for e in by_end}, reverse=True)
-    for end in dates:
-        cur = _first_at(current, end)
-        non = _first_at(noncurrent, end)
-        if cur and non:
-            return {"value": cur[1] + non[1], "as_of": end,
-                    "method": "current_plus_noncurrent_pair",
-                    "components": {"current_concept": cur[0], "current_value": cur[1],
-                                   "noncurrent_concept": non[0], "noncurrent_value": non[1]}}
+    grand = debt_instants.get("grand_totals") or {}
+    fams = _debt_families(debt_instants)
+    date_set = {e for by_end in totals.values() for e in by_end}
+    date_set |= {e for by_end in grand.values() for e in by_end}
+    for cur_map, non_map in fams.values():
+        for grp in (cur_map, non_map):
+            for by_end in grp.values():
+                date_set |= set(by_end)
+    for end in sorted(date_set, reverse=True):
+        gt = _first_at(grand, end)
+        if gt:
+            return {"value": gt[1], "as_of": end,
+                    "method": f"single_total:{gt[0]}",
+                    "components": {"concept": gt[0]}}
+        parts = []
+        for name, (cur_map, non_map) in fams.items():
+            cur = _first_at(cur_map, end)
+            non = _first_at(non_map, end)
+            if cur and non:
+                parts.append({"family": name,
+                              "current_concept": cur[0], "current_value": cur[1],
+                              "noncurrent_concept": non[0], "noncurrent_value": non[1],
+                              "family_total": cur[1] + non[1]})
+        if parts:
+            if len(parts) == 1:
+                p = parts[0]
+                return {"value": p["family_total"], "as_of": end,
+                        "method": "current_plus_noncurrent_pair",
+                        "components": {"family": p["family"],
+                                       "current_concept": p["current_concept"],
+                                       "current_value": p["current_value"],
+                                       "noncurrent_concept": p["noncurrent_concept"],
+                                       "noncurrent_value": p["noncurrent_value"]}}
+            return {"value": sum(p["family_total"] for p in parts), "as_of": end,
+                    "method": "family_pairs_sum",
+                    "components": {"families": parts}}
         tot = _first_at(totals, end)
         if tot:
             return {"value": tot[1], "as_of": end,
@@ -397,7 +445,16 @@ def add_price_metrics(metrics, price):
     if eps is None:
         eps = metrics.get("eps_diluted_latest")
     metrics["eps_used_for_trailing_pe"] = eps
-    metrics["trailing_pe"] = price["last_close"] / eps if eps else None
+    # Negative-P/E guard (v4): a loss-maker's negative P/E is not a
+    # valuation signal — on the "lower is cheaper" anchors it used to
+    # clamp to a perfect 10. When trailing EPS <= 0 the P/E is MISSING
+    # (excluded, weights renormalised) and flagged, never scored.
+    if eps is not None and eps <= 0:
+        metrics["trailing_pe"] = None
+        metrics["negative_trailing_pe_not_scored"] = True
+    else:
+        metrics["trailing_pe"] = price["last_close"] / eps if eps else None
+        metrics["negative_trailing_pe_not_scored"] = False
     fcf = metrics.get("fcf_ttm")
     if fcf is None:
         fcf = metrics.get("fcf_latest")

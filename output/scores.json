@@ -195,6 +195,7 @@
     "dilution_share_count_growth_pct": 0.4640289865169178,
     "dilution_span_years": 4.01,
     "dilution_annual_points": 5,
+    "dilution_share_series_discontinuity": false,
     "roic_median_5y_pct": 14.619054325247333,
     "roic_series_pct": [
       -6.11784076208397,
@@ -221,10 +222,12 @@
     "ev_to_sales": 5.408865663573295,
     "eps_used_for_trailing_pe": 74.33,
     "trailing_pe": 9.282927485537469,
+    "negative_trailing_pe_not_scored": false,
     "fcf_used_for_yield": 57630000000,
     "fcf_yield_latest_pct": 7.3072387690669105,
     "discount_from_52w_high_pct": -43.142492609755244,
     "price_vs_52w_low_pct": 242.65283643596143,
+    "relative_ev_to_sales_percentile": 72.2,
     "dcf_upside_pct": -16.420289855072458,
     "customer_concentration_score": 6.4,
     "revenue_percentile_vs_peers": 87.5
@@ -328,7 +331,7 @@
         "trailing_pe": {
           "value": 9.2829,
           "score": 8.287,
-          "weight": 0.2
+          "weight": 0.1
         },
         "price_to_sales": {
           "value": 5.9215,
@@ -348,15 +351,20 @@
         "dcf_upside_pct": {
           "value": -16.4203,
           "score": 2.858,
-          "weight": 0.25
+          "weight": 0.2
         },
         "discount_from_52w_high_pct": {
           "value": -43.1425,
           "score": 7.314,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 72.2,
+          "score": 7.22,
+          "weight": 0.15
         }
       },
-      "total": 5.89,
+      "total": 6.0,
       "missing_metrics": [],
       "weights_renormalised_over": 1.0
     },
@@ -436,6 +444,7 @@
     "distance_dollars": -113.3
   },
   "peers": {
+    "group": "memory_semis",
     "rows": [
       {
         "symbol": "NVDA",
@@ -443,9 +452,14 @@
         "rationale": "Largest AI/data-center silicon supplier; data-center demand comp",
         "revenue": 302970000000,
         "revenue_annual": 215938000000,
+        "revenue_ttm": 302970000000,
         "gross_margin_latest_pct": 71.06808435754708,
+        "gross_margin_median_5y_pct": 71.06808435754708,
+        "roic_median_5y_pct": 61.72220142268813,
         "fcf_margin_latest_pct": 41.812927784827124,
+        "fcf_margin_median_5y_pct": 38.52795377696071,
         "price_to_sales": 14.960399990684266,
+        "ev_to_sales": 14.996453065246104,
         "price": {
           "source": "yahoo_chart",
           "last_close": 186.63999938964844,
@@ -462,9 +476,14 @@
         "rationale": "Data-center CPU/GPU supplier; semi valuation comp",
         "revenue": 45436000000,
         "revenue_annual": 34639000000,
+        "revenue_ttm": 45436000000,
         "gross_margin_latest_pct": 49.51644100580271,
+        "gross_margin_median_5y_pct": 48.24753559693319,
+        "roic_median_5y_pct": 2.9082854621742813,
         "fcf_margin_latest_pct": 14.714628020439388,
+        "fcf_margin_median_5y_pct": 8.618278886487861,
         "price_to_sales": 16.41551752339808,
+        "ev_to_sales": 16.407946434393768,
         "price": {
           "source": "yahoo_chart",
           "last_close": 449.0400085449219,
@@ -481,9 +500,14 @@
         "rationale": "Diversified semi / AI infrastructure comp",
         "revenue": 89104000000,
         "revenue_annual": 63887000000,
+        "revenue_ttm": 89104000000,
         "gross_margin_latest_pct": 67.76652527118193,
+        "gross_margin_median_5y_pct": 66.54519169954523,
+        "roic_median_5y_pct": null,
         "fcf_margin_latest_pct": 30.28159093399283,
+        "fcf_margin_median_5y_pct": 42.32058287795993,
         "price_to_sales": 16.107728518710186,
+        "ev_to_sales": 16.524140800987077,
         "price": {
           "source": "yahoo_chart",
           "last_close": 293.69000244140625,
@@ -500,9 +524,14 @@
         "rationale": "US semi manufacturing scale comp",
         "revenue": 59892000000,
         "revenue_annual": 52853000000,
+        "revenue_ttm": 59892000000,
         "gross_margin_latest_pct": 34.76623843490436,
+        "gross_margin_median_5y_pct": 40.0365125027661,
+        "roic_median_5y_pct": 13.997905903596328,
         "fcf_margin_latest_pct": -13.968932700130551,
+        "fcf_margin_median_5y_pct": -19.886129349446506,
         "price_to_sales": 4.986942388327798,
+        "ev_to_sales": 4.908284136808397,
         "price": {
           "source": "yahoo_chart",
           "last_close": 56.279998779296875,
@@ -519,9 +548,14 @@
         "rationale": "Large-cap semi profitability comp",
         "revenue": 43120000000,
         "revenue_annual": 43120000000,
+        "revenue_ttm": 43120000000,
         "gross_margin_latest_pct": 53.10296846011132,
+        "gross_margin_median_5y_pct": 55.69793411501954,
+        "roic_median_5y_pct": 14.534583278123758,
         "fcf_margin_latest_pct": 12.057050092764378,
+        "fcf_margin_median_5y_pct": 20.56113902847571,
         "price_to_sales": 4.116069896322898,
+        "ev_to_sales": 4.271125554949985,
         "price": {
           "source": "yahoo_chart",
           "last_close": 165.41000366210938,
@@ -538,9 +572,14 @@
         "rationale": "Data-center silicon comp",
         "revenue": 9450300000,
         "revenue_annual": 8194600000,
+        "revenue_ttm": 9450300000,
         "gross_margin_latest_pct": 51.017743391989846,
+        "gross_margin_median_5y_pct": 46.25761921835783,
+        "roic_median_5y_pct": -1.5020125428173567,
         "fcf_margin_latest_pct": 9.830864227662119,
+        "fcf_margin_median_5y_pct": 8.95668626258531,
         "price_to_sales": 13.763947936967154,
+        "ev_to_sales": 13.876864987219527,
         "price": {
           "source": "yahoo_chart",
           "last_close": 141.1999969482422,
@@ -557,9 +596,14 @@
         "rationale": "NAND/storage direct business comp",
         "revenue": 14482000000,
         "revenue_annual": 12919000000,
+        "revenue_ttm": 14482000000,
         "gross_margin_latest_pct": 48.85053022679774,
+        "gross_margin_median_5y_pct": 31.256318842122067,
+        "roic_median_5y_pct": 11.88786850725316,
         "fcf_margin_latest_pct": 25.597956498180974,
+        "fcf_margin_median_5y_pct": 2.298728249880275,
         "price_to_sales": 6.994304621685541,
+        "ev_to_sales": 6.958190825248584,
         "price": {
           "source": "yahoo_chart",
           "last_close": 263.7799987792969,
@@ -576,9 +620,14 @@
         "rationale": "Storage direct business comp",
         "revenue": 13799000000,
         "revenue_annual": 12195000000,
+        "revenue_ttm": 13799000000,
         "gross_margin_latest_pct": 45.5760557605576,
+        "gross_margin_median_5y_pct": 29.74873509990567,
+        "roic_median_5y_pct": 362.82751091703057,
         "fcf_margin_latest_pct": 23.714637146371466,
+        "fcf_margin_median_5y_pct": 8.197221798198747,
         "price_to_sales": 7.750538280627219,
+        "ev_to_sales": 7.798875116629828,
         "price": {
           "source": "yahoo_chart",
           "last_close": 460.989990234375,
@@ -594,9 +643,13 @@
       "gross_margin_latest_pct": 100.0,
       "fcf_margin_latest_pct": 100.0,
       "price_to_sales": 25.0,
-      "revenue": 87.5
+      "revenue": 87.5,
+      "gross_margin_median_5y_pct": 25.0,
+      "roic_median_5y_pct": 71.4,
+      "fcf_margin_median_5y_pct": 12.5,
+      "revenue_ttm": 87.5
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -743,8 +796,18 @@
       "span_years": 4.01,
       "annual_points": 5
     },
+    "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": false,
+    "peer_group": {
+      "name": "memory_semis",
+      "members_evaluated": 8,
+      "members_with_ev_to_sales": 9,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 72.2,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [],
     "missing_value_metrics": [],
@@ -754,7 +817,7 @@
   },
   "explanations": {
     "business": "Business score is 6.83/10, driven mainly by revenue growth latest pct scored 10.0/10 (value 256.3273) and interest coverage ttm scored 10.0/10 (value 178.991). The main drags were gross margin stdev 5y pts scored 1.622/10 (value 29.3917) and fcf margin median 5y pct scored 3.059/10 (value 1.8621). Debt-to-TTM-revenue leverage scored 9.844/10 (value 0.0389) and Interest coverage scored 10.0/10 (value 178.991). Diluted share count changed +0.464%/yr over 4.01 years, scored 7.92/10; FCF is SBC-adjusted owner FCF (stock comp was 1.0% of revenue in the latest year).",
-    "value": "Value score is 5.89/10, driven mainly by fcf yield latest pct scored 8.48/10 (value 7.3072) and trailing pe scored 8.287/10 (value 9.2829). The main drags were dcf upside pct scored 2.858/10 (value -16.4203) and price to sales scored 4.219/10 (value 5.9215). The DCF fair value is $576.70 vs the current $690.00 (-16.4%).",
+    "value": "Value score is 6.0/10, driven mainly by fcf yield latest pct scored 8.48/10 (value 7.3072) and trailing pe scored 8.287/10 (value 9.2829). The main drags were dcf upside pct scored 2.858/10 (value -16.4203) and price to sales scored 4.219/10 (value 5.9215). The DCF fair value is $576.70 vs the current $690.00 (-16.4%).",
     "moat": "Moat score is 6.29/10, driven mainly by revenue percentile vs peers scored 8.75/10 (value 87.5) and capex intensity latest pct scored 7.612/10 (value 23.0591). The main drags were gross margin stdev 5y pts scored 1.622/10 (value 29.3917) and gross margin median 5y pct scored 5.805/10 (value 39.7908)."
   }
 }

@@ -4,7 +4,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.evaluator.scoring import interpolate, concentration_score, score_section
+from src.evaluator.scoring import (interpolate, concentration_score, score_section,
+                                   cheapness_percentile)
 from src.evaluator.dcf import fair_value, growth_path, build_wacc
 from src.evaluator.filings import extract_concentration
 from src.evaluator.metrics import (ttm_from_periods, _latest_period_value, add_price_metrics,
@@ -280,6 +281,104 @@ class TestV3SBCAndDilution(unittest.TestCase):
         self.assertIsNone(m["dilution_share_count_growth_pct"])
         business = score_section(cfgmod.load_all()["scoring"]["business"], m)
         self.assertIn("dilution_share_count_growth_pct", business["missing_metrics"])
+
+
+class TestV4DebtFamilies(unittest.TestCase):
+    """v4: debt families. Applied Digital carries ~$6.4B almost entirely
+    as notes payable (LongTermNotesPayable + NotesPayableCurrent); the
+    bank family alone resolved a stray $7.19M concept and understated
+    its debt ~1000x."""
+
+    APLD_LIKE = {
+        "totals": {"LongTermDebt": {"2026-08-31": 7.19e6}},
+        "grand_totals": {},
+        "families": {
+            "bank_debt": {"current": {}, "noncurrent": {}},
+            "notes_payable": {
+                "current": {"NotesPayableCurrent": {"2026-08-31": 0.11e9}},
+                "noncurrent": {"LongTermNotesPayable": {"2026-08-31": 6.26e9}},
+            },
+        },
+    }
+
+    def test_notes_family_beats_stray_minor_total(self):
+        res = resolve_total_debt(self.APLD_LIKE)
+        self.assertAlmostEqual(res["value"], 6.37e9, delta=1e6)
+        self.assertNotEqual(res["value"], 7.19e6)
+        self.assertEqual(res["as_of"], "2026-08-31")
+
+    def test_families_sum_across_families(self):
+        instants = {
+            "totals": {},
+            "grand_totals": {},
+            "families": {
+                "bank_debt": {
+                    "current": {"LongTermDebtCurrent": {"2026-06-30": 1.0e9}},
+                    "noncurrent": {"LongTermDebtNoncurrent": {"2026-06-30": 3.0e9}},
+                },
+                "notes_payable": {
+                    "current": {"NotesPayableCurrent": {"2026-06-30": 0.5e9}},
+                    "noncurrent": {"LongTermNotesPayable": {"2026-06-30": 1.5e9}},
+                },
+            },
+        }
+        res = resolve_total_debt(instants)
+        self.assertEqual(res["method"], "family_pairs_sum")
+        self.assertAlmostEqual(res["value"], 6.0e9)
+
+    def test_grand_total_replaces_families(self):
+        instants = dict(self.APLD_LIKE)
+        instants["grand_totals"] = {"DebtInstrumentCarryingAmount": {"2026-08-31": 35.55e9}}
+        res = resolve_total_debt(instants)
+        # Carrying amount replaces components — never added to them.
+        self.assertAlmostEqual(res["value"], 35.55e9)
+        self.assertEqual(res["method"], "single_total:DebtInstrumentCarryingAmount")
+
+
+class TestV4ValueChanges(unittest.TestCase):
+    """v4: negative-P/E guard, relative EV/S percentile, value weights."""
+
+    def _price_metrics(self, eps_ttm):
+        m = {"revenue_ttm": 1000.0, "revenue_latest": 900.0,
+             "diluted_shares_latest_period": 100.0, "diluted_shares_latest": 100.0,
+             "net_cash_latest": 0.0, "eps_diluted_ttm": eps_ttm, "fcf_ttm": 50.0}
+        price = {"last_close": 50.0, "high_52w": 100.0, "low_52w": 25.0}
+        return add_price_metrics(m, price)
+
+    def test_negative_eps_pe_not_scored(self):
+        m = self._price_metrics(-3.55)
+        self.assertIsNone(m["trailing_pe"])
+        self.assertTrue(m["negative_trailing_pe_not_scored"])
+        value = score_section(cfgmod.load_all()["scoring"]["value"], m)
+        self.assertIn("trailing_pe", value["missing_metrics"])
+        self.assertNotIn("trailing_pe", value["subscores"])
+
+    def test_positive_eps_pe_scored(self):
+        m = self._price_metrics(5.0)
+        self.assertAlmostEqual(m["trailing_pe"], 10.0)
+        self.assertFalse(m["negative_trailing_pe_not_scored"])
+
+    def test_cheapness_percentile_crwv_anchor(self):
+        # CRWV preview: subject 7.32 vs APLD 9.13, CORZ 15.36, WULF
+        # 42.04, HUT 47.87, CIFR 53.27 -> cheapest of 6 -> 91.7.
+        pct = cheapness_percentile(7.32, [9.13, 15.36, 42.04, 47.87, 53.27])
+        self.assertAlmostEqual(pct, 91.7, places=1)
+        value = score_section(cfgmod.load_all()["scoring"]["value"],
+                              {"relative_ev_to_sales_percentile": pct})
+        self.assertAlmostEqual(
+            value["subscores"]["relative_ev_to_sales_percentile"]["score"], 9.17, delta=0.01)
+
+    def test_cheapness_percentile_most_expensive(self):
+        pct = cheapness_percentile(53.27, [7.32, 9.13, 15.36, 42.04, 47.87])
+        self.assertAlmostEqual(pct, (0 + 0.5) / 6 * 100, places=1)
+
+    def test_value_weights_sum_to_one(self):
+        value = cfgmod.load_all()["scoring"]["value"]
+        self.assertAlmostEqual(sum(s["weight"] for s in value.values()), 1.0, places=9)
+        self.assertIn("relative_ev_to_sales_percentile", value)
+        self.assertAlmostEqual(value["trailing_pe"]["weight"], 0.10)
+        self.assertAlmostEqual(value["dcf_upside_pct"]["weight"], 0.20)
+        self.assertAlmostEqual(value["relative_ev_to_sales_percentile"]["weight"], 0.15)
 
 
 if __name__ == "__main__":

@@ -111,10 +111,18 @@ def _instants_by_end(rows):
 # debt concepts, grouped by role (see config/sources.yaml for the priority
 # rules). These config keys are component lists, not standalone metrics,
 # so the main per-metric loop below skips them.
+# v4: debt lives in FAMILIES that coexist on one balance sheet — the
+# bank/debt family (total_debt_current / total_debt_noncurrent) and the
+# notes-payable family (total_notes_current / total_notes_noncurrent) —
+# plus carrying-amount GRAND TOTALS (total_debt_grand_total) that replace
+# all components when present.
 DEBT_GROUPS = (("totals", "total_debt"),
-               ("current", "total_debt_current"),
-               ("noncurrent", "total_debt_noncurrent"))
-DEBT_COMPONENT_KEYS = {"total_debt_current", "total_debt_noncurrent"}
+               ("grand_totals", "total_debt_grand_total"))
+DEBT_FAMILIES = (("bank_debt", "total_debt_current", "total_debt_noncurrent"),
+                 ("notes_payable", "total_notes_current", "total_notes_noncurrent"))
+DEBT_COMPONENT_KEYS = {"total_debt_current", "total_debt_noncurrent",
+                       "total_notes_current", "total_notes_noncurrent",
+                       "total_debt_grand_total"}
 
 
 def annual_series(facts, candidates, metric):
@@ -167,6 +175,18 @@ def get_company_metrics(sources_cfg, cik):
             if inst:
                 per_concept[concept] = inst
         debt_instants[group] = per_concept
+    families = {}
+    for fam_name, cur_key, non_key in DEBT_FAMILIES:
+        fam = {}
+        for side, key in (("current", cur_key), ("noncurrent", non_key)):
+            per_concept = {}
+            for concept in sources_cfg["concepts"].get(key, []):
+                inst = _instants_by_end(_unit_rows(facts, concept, "total_debt"))
+                if inst:
+                    per_concept[concept] = inst
+            fam[side] = per_concept
+        families[fam_name] = fam
+    debt_instants["families"] = families
     series["_debt_instants"] = debt_instants
     series["_periods"] = periods
     series["_balance_latest"] = balance_latest
