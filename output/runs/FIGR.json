@@ -1,7 +1,7 @@
 {
   "symbol": "FIGR",
   "entity_name": "FIGURE TECHNOLOGY SOLUTIONS, INC.",
-  "snapshot_date": "2026-11-07",
+  "snapshot_date": "2026-11-08",
   "inputs_with_sources": {
     "filing_metrics": {
       "source": "SEC EDGAR XBRL companyfacts",
@@ -47,6 +47,7 @@
     "net_income_ttm": 237127000,
     "operating_income_ttm": 201409000,
     "operating_cash_flow_ttm": -86490000,
+    "share_based_compensation_ttm": 109079000,
     "ttm_details": {
       "revenue": {
         "value": 708873000,
@@ -92,12 +93,29 @@
         "ytd_current": -72969000,
         "ytd_prior": 76089000,
         "ttm_end": "2026-06-30"
+      },
+      "share_based_compensation": {
+        "value": 109079000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 62364000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 51976000,
+        "ytd_prior": 5261000,
+        "ttm_end": "2026-06-30"
       }
     },
     "ttm_end": "2026-06-30",
+    "sbc_ttm": 109079000,
+    "fcf_raw_ttm": null,
     "fcf_ttm": null,
+    "sbc_ttm_unavailable": false,
     "diluted_shares_latest_period": 246969949,
+    "sbc_latest": 62364000,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "fcf_adjusted_years": [],
+    "fcf_raw_latest": null,
     "fcf_latest": null,
+    "fcf_adjusted_latest": null,
     "gross_margin_latest_pct": null,
     "gross_margin_median_5y_pct": null,
     "gross_margin_stdev_5y_pts": null,
@@ -129,6 +147,11 @@
     "rd_expense_latest": 64922000,
     "eps_diluted_latest": 0.44,
     "diluted_shares_latest": 141802002,
+    "sbc_pct_of_revenue_latest": null,
+    "dilution_share_count_growth_pct": 66.1919795165416,
+    "dilution_span_years": 2.0,
+    "dilution_annual_points": 3,
+    "dilution_share_series_discontinuity": false,
     "roic_median_5y_pct": 16.148557791410294,
     "roic_series_pct": [
       1.4528959822907626,
@@ -151,13 +174,14 @@
     "revenue_percentile_vs_peers": null
   },
   "fcf_series_by_year": {},
+  "fcf_raw_series_by_year": {},
   "scores": {
     "business": {
       "subscores": {
         "revenue_growth_latest_pct": {
           "value": 48.6909,
           "score": 7.185,
-          "weight": 0.1
+          "weight": 0.075
         },
         "revenue_cagr_5y_pct": {
           "value": 55.5261,
@@ -174,20 +198,25 @@
           "score": 10.0,
           "weight": 0.1
         },
+        "dilution_share_count_growth_pct": {
+          "value": 66.192,
+          "score": 0.0,
+          "weight": 0.05
+        },
         "leverage_debt_to_revenue_ttm": {
           "value": 0.5962,
           "score": 7.615,
           "weight": 0.075
         }
       },
-      "total": 7.14,
+      "total": 6.46,
       "missing_metrics": [
         "gross_margin_median_5y_pct",
         "fcf_margin_median_5y_pct",
         "gross_margin_stdev_5y_pts",
         "interest_coverage_ttm"
       ],
-      "weights_renormalised_over": 0.5
+      "weights_renormalised_over": 0.525
     },
     "value": {
       "subscores": {
@@ -365,6 +394,15 @@
         "ytd_current": -72969000,
         "ytd_prior": 76089000,
         "ttm_end": "2026-06-30"
+      },
+      "share_based_compensation": {
+        "value": 109079000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 62364000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 51976000,
+        "ytd_prior": 5261000,
+        "ttm_end": "2026-06-30"
       }
     },
     "consensus_eps": "missing_by_design_v1_no_paid_consensus - forward multiples use filed actuals and the config DCF only",
@@ -381,6 +419,16 @@
     "debt_not_determinable_fail_closed": false,
     "finance_lease_liabilities": "excluded_from_total_debt - total debt counts borrowings and debt instruments per the config/sources.yaml resolution priority; operating and finance lease liabilities are not added (several total concepts already embed capital/finance leases)",
     "interest_coverage_missing_reason": "interest_expense_ttm_missing_or_nonpositive",
+    "sbc_adjusted_fcf": true,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "sbc_ttm_unavailable": false,
+    "fcf_basis": "owner_fcf = operating cash flow - capex - stock-based compensation (SBC-adjusted, v3); raw figures kept as fcf_raw_* in kpis",
+    "dilution_share_count_growth": {
+      "pct": 66.1919795165416,
+      "span_years": 2.0,
+      "annual_points": 3
+    },
+    "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
     "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
     "peer_failures": [],
@@ -404,7 +452,7 @@
     "switching_costs": "not_evaluated_v1"
   },
   "explanations": {
-    "business": "Business score is 7.14/10, driven mainly by revenue cagr 5y pct scored 10.0/10 (value 55.5261) and net cash to revenue scored 10.0/10 (value 1.4317). The main drags were operating margin median 5y pct scored 3.542/10 (value 2.7091) and revenue growth latest pct scored 7.185/10 (value 48.6909). Debt-to-TTM-revenue leverage scored 7.615/10 (value 0.5962).",
+    "business": "Business score is 6.46/10, driven mainly by revenue cagr 5y pct scored 10.0/10 (value 55.5261) and net cash to revenue scored 10.0/10 (value 1.4317). The main drags were dilution share count growth pct scored 0.0/10 (value 66.192) and operating margin median 5y pct scored 3.542/10 (value 2.7091). Debt-to-TTM-revenue leverage scored 7.615/10 (value 0.5962). Diluted share count changed +66.192%/yr over 2.0 years, scored 0.0/10.",
     "value": "Value score is 4.84/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -69.2531) and trailing pe scored 4.613/10 (value 24.4355). The main drags were price to sales scored 3.041/10 (value 7.9173) and ev to sales scored 3.843/10 (value 6.4857).",
     "moat": "Moat score is 6.16/10, driven mainly by roic median 5y pct scored 7.787/10 (value 16.1486) and customer concentration score scored 4.0/10 (value 4.0)."
   }
