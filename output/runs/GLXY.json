@@ -1,7 +1,7 @@
 {
   "symbol": "GLXY",
   "entity_name": "Galaxy Digital Inc.",
-  "snapshot_date": "2026-11-07",
+  "snapshot_date": "2026-11-08",
   "inputs_with_sources": {
     "filing_metrics": {
       "source": "SEC EDGAR XBRL companyfacts",
@@ -46,6 +46,7 @@
     "net_income_ttm": -278236000,
     "interest_expense_ttm": 73610000,
     "operating_cash_flow_ttm": -357280000,
+    "share_based_compensation_ttm": 60562000,
     "capex_ttm": 1532749000,
     "ttm_details": {
       "revenue": {
@@ -84,6 +85,15 @@
         "ytd_prior": 329289000,
         "ttm_end": "2026-06-30"
       },
+      "share_based_compensation": {
+        "value": 60562000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 53612000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 34541000,
+        "ytd_prior": 27591000,
+        "ttm_end": "2026-06-30"
+      },
       "capex": {
         "value": 1532749000,
         "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
@@ -95,15 +105,27 @@
       }
     },
     "ttm_end": "2026-03-31",
-    "fcf_ttm": -1890029000,
+    "sbc_ttm": 60562000,
+    "fcf_raw_ttm": -1890029000,
+    "fcf_ttm": -1950591000,
+    "sbc_ttm_unavailable": false,
     "diluted_shares_latest_period": 192869271,
-    "fcf_latest": -1509170000,
+    "sbc_latest": 53612000,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "fcf_adjusted_years": [
+      "2023-12-31",
+      "2024-12-31",
+      "2025-12-31"
+    ],
+    "fcf_raw_latest": -1509170000,
+    "fcf_latest": -1562782000,
+    "fcf_adjusted_latest": -1562782000,
     "gross_margin_latest_pct": null,
     "gross_margin_median_5y_pct": null,
     "gross_margin_stdev_5y_pts": null,
     "operating_margin_median_5y_pct": null,
-    "fcf_margin_median_5y_pct": -0.621373908191878,
-    "fcf_margin_latest_pct": -2.505101764727559,
+    "fcf_margin_median_5y_pct": -0.797494628232163,
+    "fcf_margin_latest_pct": -2.5940934063653955,
     "cash_latest": 895744000,
     "investments_latest": null,
     "total_debt_latest": null,
@@ -127,6 +149,10 @@
     "rd_expense_latest": null,
     "eps_diluted_latest": null,
     "diluted_shares_latest": 366475172,
+    "sbc_pct_of_revenue_latest": 0.08899164163783661,
+    "dilution_share_count_growth_pct": 6.025574417622348,
+    "dilution_span_years": 2.0,
+    "dilution_annual_points": 3,
     "roic_median_5y_pct": null,
     "roic_series_pct": [],
     "shares_used_for_market_cap": 192869271,
@@ -137,15 +163,20 @@
     "ev_to_sales": 0.045966919350883505,
     "eps_used_for_trailing_pe": null,
     "trailing_pe": null,
-    "fcf_used_for_yield": -1890029000,
-    "fcf_yield_latest_pct": -71.7389035124463,
+    "fcf_used_for_yield": -1950591000,
+    "fcf_yield_latest_pct": -74.03762563497499,
     "discount_from_52w_high_pct": -60.186536576341034,
     "price_vs_52w_low_pct": 5.238831503522712,
-    "dcf_upside_pct": -318.6676451951709,
+    "dcf_upside_pct": -326.42752815154455,
     "customer_concentration_score": 4.0,
     "revenue_percentile_vs_peers": null
   },
   "fcf_series_by_year": {
+    "2023-12-31": -131346000,
+    "2024-12-31": -338961000,
+    "2025-12-31": -1562782000
+  },
+  "fcf_raw_series_by_year": {
     "2023-12-31": -49692000,
     "2024-12-31": -264104000,
     "2025-12-31": -1509170000
@@ -156,7 +187,7 @@
         "revenue_growth_latest_pct": {
           "value": 41.7395,
           "score": 6.837,
-          "weight": 0.1
+          "weight": 0.075
         },
         "revenue_cagr_5y_pct": {
           "value": 8.075,
@@ -164,12 +195,17 @@
           "weight": 0.075
         },
         "fcf_margin_median_5y_pct": {
-          "value": -0.6214,
-          "score": 2.345,
+          "value": -0.7975,
+          "score": 2.301,
           "weight": 0.15
+        },
+        "dilution_share_count_growth_pct": {
+          "value": 6.0256,
+          "score": 2.987,
+          "weight": 0.05
         }
       },
-      "total": 4.34,
+      "total": 3.95,
       "missing_metrics": [
         "gross_margin_median_5y_pct",
         "operating_margin_median_5y_pct",
@@ -178,7 +214,7 @@
         "leverage_debt_to_revenue_ttm",
         "interest_coverage_ttm"
       ],
-      "weights_renormalised_over": 0.325
+      "weights_renormalised_over": 0.35
     },
     "value": {
       "subscores": {
@@ -193,12 +229,12 @@
           "weight": 0.1
         },
         "fcf_yield_latest_pct": {
-          "value": -71.7389,
+          "value": -74.0376,
           "score": 0.0,
           "weight": 0.2
         },
         "dcf_upside_pct": {
-          "value": -318.6676,
+          "value": -326.4275,
           "score": 0.0,
           "weight": 0.25
         },
@@ -238,7 +274,7 @@
     }
   },
   "dcf": {
-    "fcf_per_share_base": -4.1181,
+    "fcf_per_share_base": -4.2644,
     "growth_path_pct": [
       8.075,
       6.46,
@@ -260,19 +296,19 @@
         "tax_rate_pct": 15.0
       }
     },
-    "fair_value_per_share": -29.87,
-    "pv_of_projected_fcf": -15.56,
-    "pv_of_terminal_value": -14.31,
+    "fair_value_per_share": -30.93,
+    "pv_of_projected_fcf": -16.12,
+    "pv_of_terminal_value": -14.82,
     "projected_fcf_per_share": [
-      -4.4506,
-      -4.7381,
-      -4.9677,
-      -5.1281,
-      -5.2109
+      -4.6087,
+      -4.9064,
+      -5.1441,
+      -5.3103,
+      -5.3961
     ],
     "current_price": 13.65999984741211,
-    "upside_pct": -318.67,
-    "distance_dollars": -43.53
+    "upside_pct": -326.43,
+    "distance_dollars": -44.59
   },
   "peers": {
     "rows": [],
@@ -362,6 +398,15 @@
         "ytd_prior": 329289000,
         "ttm_end": "2026-06-30"
       },
+      "share_based_compensation": {
+        "value": 60562000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 53612000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 34541000,
+        "ytd_prior": 27591000,
+        "ttm_end": "2026-06-30"
+      },
       "capex": {
         "value": 1532749000,
         "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
@@ -384,6 +429,15 @@
     "debt_not_determinable_fail_closed": true,
     "finance_lease_liabilities": "excluded_from_total_debt - total debt counts borrowings and debt instruments per the config/sources.yaml resolution priority; operating and finance lease liabilities are not added (several total concepts already embed capital/finance leases)",
     "interest_coverage_missing_reason": "operating_income_ttm_missing",
+    "sbc_adjusted_fcf": true,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "sbc_ttm_unavailable": false,
+    "fcf_basis": "owner_fcf = operating cash flow - capex - stock-based compensation (SBC-adjusted, v3); raw figures kept as fcf_raw_* in kpis",
+    "dilution_share_count_growth": {
+      "pct": 6.025574417622348,
+      "span_years": 2.0,
+      "annual_points": 3
+    },
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
     "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
     "peer_failures": [],
@@ -408,8 +462,8 @@
     "switching_costs": "not_evaluated_v1"
   },
   "explanations": {
-    "business": "Business score is 4.34/10, driven mainly by revenue growth latest pct scored 6.837/10 (value 41.7395) and revenue cagr 5y pct scored 5.019/10 (value 8.075). The main drags were fcf margin median 5y pct scored 2.345/10 (value -0.6214) and revenue cagr 5y pct scored 5.019/10 (value 8.075). Leverage checks (debt-to-TTM-revenue and interest coverage) were excluded: filed debt or interest data could not be determined.",
-    "value": "Value score is 4.25/10, driven mainly by price to sales scored 10.0/10 (value 0.046) and ev to sales scored 10.0/10 (value 0.046). The main drags were dcf upside pct scored 0.0/10 (value -318.6676) and fcf yield latest pct scored 0.0/10 (value -71.7389). The DCF fair value is $-29.87 vs the current $13.66 (-318.7%).",
+    "business": "Business score is 3.95/10, driven mainly by revenue growth latest pct scored 6.837/10 (value 41.7395) and revenue cagr 5y pct scored 5.019/10 (value 8.075). The main drags were fcf margin median 5y pct scored 2.301/10 (value -0.7975) and dilution share count growth pct scored 2.987/10 (value 6.0256). Leverage checks (debt-to-TTM-revenue and interest coverage) were excluded: filed debt or interest data could not be determined. Diluted share count changed +6.0256%/yr over 2.0 years, scored 2.987/10; FCF is SBC-adjusted owner FCF (stock comp was 0.1% of revenue in the latest year).",
+    "value": "Value score is 4.25/10, driven mainly by price to sales scored 10.0/10 (value 0.046) and ev to sales scored 10.0/10 (value 0.046). The main drags were dcf upside pct scored 0.0/10 (value -326.4275) and fcf yield latest pct scored 0.0/10 (value -74.0376). The DCF fair value is $-30.93 vs the current $13.66 (-326.4%).",
     "moat": "Moat score is 2.9/10, driven mainly by customer concentration score scored 4.0/10 (value 4.0) and capex intensity latest pct scored 1.792/10 (value 1.9795)."
   }
 }

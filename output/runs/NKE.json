@@ -1,7 +1,7 @@
 {
   "symbol": "NKE",
   "entity_name": "NIKE, Inc.",
-  "snapshot_date": "2026-11-07",
+  "snapshot_date": "2026-11-08",
   "inputs_with_sources": {
     "filing_metrics": {
       "source": "SEC EDGAR XBRL companyfacts",
@@ -53,6 +53,7 @@
     "eps_diluted_ttm": 2.09,
     "net_income_ttm": 3093000000,
     "operating_cash_flow_ttm": 2781000000,
+    "share_based_compensation_ttm": 688000000,
     "capex_ttm": 676000000,
     "ttm_details": {
       "revenue": {
@@ -91,6 +92,15 @@
         "ytd_prior": 222000000,
         "ttm_end": "2026-08-31"
       },
+      "share_based_compensation": {
+        "value": 688000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 715000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 158000000,
+        "ytd_prior": 185000000,
+        "ttm_end": "2026-08-31"
+      },
       "capex": {
         "value": 676000000,
         "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
@@ -102,15 +112,43 @@
       }
     },
     "ttm_end": "2026-08-31",
-    "fcf_ttm": 2105000000,
+    "sbc_ttm": 688000000,
+    "fcf_raw_ttm": 2105000000,
+    "fcf_ttm": 1417000000,
+    "sbc_ttm_unavailable": false,
     "diluted_shares_latest_period": 1484200000,
-    "fcf_latest": 2184000000,
+    "sbc_latest": 715000000,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "fcf_adjusted_years": [
+      "2008-05-31",
+      "2009-05-31",
+      "2010-05-31",
+      "2011-05-31",
+      "2012-05-31",
+      "2013-05-31",
+      "2014-05-31",
+      "2015-05-31",
+      "2016-05-31",
+      "2017-05-31",
+      "2018-05-31",
+      "2019-05-31",
+      "2020-05-31",
+      "2021-05-31",
+      "2022-05-31",
+      "2023-05-31",
+      "2024-05-31",
+      "2025-05-31",
+      "2026-05-31"
+    ],
+    "fcf_raw_latest": 2184000000,
+    "fcf_latest": 1469000000,
+    "fcf_adjusted_latest": 1469000000,
     "gross_margin_latest_pct": 42.913487650329756,
     "gross_margin_median_5y_pct": 43.52461096901419,
     "gross_margin_stdev_5y_pts": 1.2033690721153796,
     "operating_margin_median_5y_pct": null,
-    "fcf_margin_median_5y_pct": 9.484050524512952,
-    "fcf_margin_latest_pct": 4.70709944394155,
+    "fcf_margin_median_5y_pct": 8.038346642716286,
+    "fcf_margin_latest_pct": 3.1660847450321135,
     "cash_latest": 6903000000,
     "investments_latest": 4763000000,
     "total_debt_latest": 7893000000,
@@ -139,6 +177,10 @@
     "rd_expense_latest": null,
     "eps_diluted_latest": 2.1,
     "diluted_shares_latest": 1481000000,
+    "sbc_pct_of_revenue_latest": 1.5410146989094358,
+    "dilution_share_count_growth_pct": -1.6493524814823801,
+    "dilution_span_years": 5.0,
+    "dilution_annual_points": 6,
     "roic_median_5y_pct": null,
     "roic_series_pct": [],
     "shares_used_for_market_cap": 1484200000,
@@ -149,15 +191,36 @@
     "ev_to_sales": 1.1658555757440663,
     "eps_used_for_trailing_pe": 2.09,
     "trailing_pe": 18.464114905544445,
-    "fcf_used_for_yield": 2105000000,
-    "fcf_yield_latest_pct": 3.6752331288146074,
+    "fcf_used_for_yield": 1417000000,
+    "fcf_yield_latest_pct": 2.4740167902756767,
     "discount_from_52w_high_pct": -43.0657998707798,
     "price_vs_52w_low_pct": 13.935640299828233,
-    "dcf_upside_pct": -54.75511808509512,
+    "dcf_upside_pct": -69.55169745130972,
     "customer_concentration_score": 4.0,
     "revenue_percentile_vs_peers": null
   },
   "fcf_series_by_year": {
+    "2008-05-31": 1346100000,
+    "2009-05-31": 1109000000,
+    "2010-05-31": 2670000000,
+    "2011-05-31": 1275000000,
+    "2012-05-31": 1131000000,
+    "2013-05-31": 2260000000,
+    "2014-05-31": 1956000000,
+    "2015-05-31": 3526000000,
+    "2016-05-31": 2020000000,
+    "2017-05-31": 2526000000,
+    "2018-05-31": 3709000000,
+    "2019-05-31": 4459000000,
+    "2020-05-31": 970000000,
+    "2021-05-31": 5351000000,
+    "2022-05-31": 3792000000,
+    "2023-05-31": 4117000000,
+    "2024-05-31": 5813000000,
+    "2025-05-31": 2559000000,
+    "2026-05-31": 1469000000
+  },
+  "fcf_raw_series_by_year": {
     "2008-05-31": 1487100000,
     "2009-05-31": 1280000000,
     "2010-05-31": 2829000000,
@@ -184,7 +247,7 @@
         "revenue_growth_latest_pct": {
           "value": 0.1922,
           "score": 3.023,
-          "weight": 0.1
+          "weight": 0.075
         },
         "revenue_cagr_5y_pct": {
           "value": 0.8216,
@@ -194,11 +257,11 @@
         "gross_margin_median_5y_pct": {
           "value": 43.5246,
           "score": 6.303,
-          "weight": 0.175
+          "weight": 0.15
         },
         "fcf_margin_median_5y_pct": {
-          "value": 9.4841,
-          "score": 5.345,
+          "value": 8.0383,
+          "score": 4.912,
           "weight": 0.15
         },
         "net_cash_to_revenue": {
@@ -211,13 +274,18 @@
           "score": 9.519,
           "weight": 0.1
         },
+        "dilution_share_count_growth_pct": {
+          "value": -1.6494,
+          "score": 9.325,
+          "weight": 0.05
+        },
         "leverage_debt_to_revenue_ttm": {
           "value": 0.172,
           "score": 9.312,
           "weight": 0.075
         }
       },
-      "total": 5.95,
+      "total": 6.17,
       "missing_metrics": [
         "operating_margin_median_5y_pct",
         "interest_coverage_ttm"
@@ -242,12 +310,12 @@
           "weight": 0.1
         },
         "fcf_yield_latest_pct": {
-          "value": 3.6752,
-          "score": 5.175,
+          "value": 2.474,
+          "score": 3.974,
           "weight": 0.2
         },
         "dcf_upside_pct": {
-          "value": -54.7551,
+          "value": -69.5517,
           "score": 0.0,
           "weight": 0.25
         },
@@ -257,7 +325,7 @@
           "weight": 0.1
         }
       },
-      "total": 5.1,
+      "total": 4.86,
       "missing_metrics": [],
       "weights_renormalised_over": 1.0
     },
@@ -293,7 +361,7 @@
     }
   },
   "dcf": {
-    "fcf_per_share_base": 1.4747,
+    "fcf_per_share_base": 0.9919,
     "growth_path_pct": [
       0.8216,
       0.6573,
@@ -315,19 +383,19 @@
         "tax_rate_pct": 15.0
       }
     },
-    "fair_value_per_share": 17.46,
-    "pv_of_projected_fcf": 5.89,
-    "pv_of_terminal_value": 11.57,
+    "fair_value_per_share": 11.75,
+    "pv_of_projected_fcf": 3.96,
+    "pv_of_terminal_value": 7.78,
     "projected_fcf_per_share": [
-      1.4868,
-      1.4966,
-      1.5039,
-      1.5089,
-      1.5114
+      1.0,
+      1.0066,
+      1.0116,
+      1.0149,
+      1.0166
     ],
     "current_price": 38.59000015258789,
-    "upside_pct": -54.76,
-    "distance_dollars": -21.13
+    "upside_pct": -69.55,
+    "distance_dollars": -26.84
   },
   "peers": {
     "rows": [],
@@ -417,6 +485,15 @@
         "ytd_prior": 222000000,
         "ttm_end": "2026-08-31"
       },
+      "share_based_compensation": {
+        "value": 688000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 715000000,
+        "annual_end": "2026-05-31",
+        "ytd_current": 158000000,
+        "ytd_prior": 185000000,
+        "ttm_end": "2026-08-31"
+      },
       "capex": {
         "value": 676000000,
         "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
@@ -444,6 +521,15 @@
     "debt_not_determinable_fail_closed": false,
     "finance_lease_liabilities": "excluded_from_total_debt - total debt counts borrowings and debt instruments per the config/sources.yaml resolution priority; operating and finance lease liabilities are not added (several total concepts already embed capital/finance leases)",
     "interest_coverage_missing_reason": "operating_income_ttm_missing",
+    "sbc_adjusted_fcf": true,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "sbc_ttm_unavailable": false,
+    "fcf_basis": "owner_fcf = operating cash flow - capex - stock-based compensation (SBC-adjusted, v3); raw figures kept as fcf_raw_* in kpis",
+    "dilution_share_count_growth": {
+      "pct": -1.6493524814823801,
+      "span_years": 5.0,
+      "annual_points": 6
+    },
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
     "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
     "peer_failures": [],
@@ -460,8 +546,8 @@
     "switching_costs": "not_evaluated_v1"
   },
   "explanations": {
-    "business": "Business score is 5.95/10, driven mainly by gross margin stdev 5y pts scored 9.519/10 (value 1.2034) and leverage debt to revenue ttm scored 9.312/10 (value 0.172). The main drags were revenue growth latest pct scored 3.023/10 (value 0.1922) and revenue cagr 5y pct scored 3.205/10 (value 0.8216). Debt-to-TTM-revenue leverage scored 9.312/10 (value 0.172).",
-    "value": "Value score is 5.1/10, driven mainly by ev to sales scored 8.751/10 (value 1.1659) and price to sales scored 8.628/10 (value 1.2481). The main drags were dcf upside pct scored 0.0/10 (value -54.7551) and fcf yield latest pct scored 5.175/10 (value 3.6752). The DCF fair value is $17.46 vs the current $38.59 (-54.8%).",
+    "business": "Business score is 6.17/10, driven mainly by gross margin stdev 5y pts scored 9.519/10 (value 1.2034) and dilution share count growth pct scored 9.325/10 (value -1.6494). The main drags were revenue growth latest pct scored 3.023/10 (value 0.1922) and revenue cagr 5y pct scored 3.205/10 (value 0.8216). Debt-to-TTM-revenue leverage scored 9.312/10 (value 0.172). Diluted share count changed -1.6494%/yr over 5.0 years, scored 9.325/10; FCF is SBC-adjusted owner FCF (stock comp was 1.5% of revenue in the latest year).",
+    "value": "Value score is 4.86/10, driven mainly by ev to sales scored 8.751/10 (value 1.1659) and price to sales scored 8.628/10 (value 1.2481). The main drags were dcf upside pct scored 0.0/10 (value -69.5517) and fcf yield latest pct scored 3.974/10 (value 2.474). The DCF fair value is $11.75 vs the current $38.59 (-69.6%).",
     "moat": "Moat score is 5.43/10, driven mainly by gross margin stdev 5y pts scored 9.519/10 (value 1.2034) and gross margin median 5y pct scored 6.303/10 (value 43.5246). The main drags were capex intensity latest pct scored 1.59/10 (value 1.4742) and customer concentration score scored 4.0/10 (value 4.0)."
   }
 }
