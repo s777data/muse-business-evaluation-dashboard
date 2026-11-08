@@ -66,8 +66,17 @@ business:
     anchors: [[0, 0], [1, 2], [2, 4], [4, 6], [8, 8], [15, 10]]
 
 value:
+  # Weight rebalance (v4): a peer-relative EV/S sub-score (0.15) was added,
+  # funded by trailing_pe (0.20->0.10) and dcf_upside (0.25->0.20); all
+  # seven weights still sum to exactly 1.0. Value stays mostly absolute —
+  # the relative piece only ranks the name inside its own sector group.
+  # Negative-P/E guard (v4, in metrics.add_price_metrics): when trailing
+  # EPS (TTM) <= 0 the trailing_pe metric is MISSING, never scored — a
+  # loss-maker's negative P/E used to clamp to a perfect 10 on the
+  # "lower is cheaper" anchors (CRWV scored 2.00 of its 4.15 Value points
+  # from a -13x P/E). Flagged as negative_trailing_pe_not_scored.
   trailing_pe:
-    weight: 0.20
+    weight: 0.10
     anchors: [[3, 10], [5, 10], [10, 8], [15, 6.5], [25, 4.5], [40, 2.5], [60, 1]]
   price_to_sales:
     weight: 0.15
@@ -79,11 +88,22 @@ value:
     weight: 0.20
     anchors: [[-2, 0], [0, 1], [2, 3.5], [4, 5.5], [6, 7.5], [8, 9], [12, 10]]
   dcf_upside_pct:
-    weight: 0.25
+    weight: 0.20
     anchors: [[-50, 0], [-25, 2], [0, 4.5], [25, 6.5], [50, 8], [100, 10]]
   discount_from_52w_high_pct:
     weight: 0.10
     anchors: [[0, 2], [-15, 4], [-30, 6], [-45, 7.5], [-60, 9]]
+  # Peer-relative EV/S (v4): the subject's cheapness percentile within
+  # its sector peer group (config/peers.yaml), computed in run.py as
+  # (peers with HIGHER EV/S + 0.5 x ties incl. self) / group size x 100
+  # over group members with a computable EV/S. Linear: the group's
+  # cheapest name approaches 10, its most expensive approaches 0.
+  # Missing (renormalised) when fewer than peers.yaml's
+  # relative_ev_to_sales_min_group members have an EV/S — never scored
+  # off a two-name "group".
+  relative_ev_to_sales_percentile:
+    weight: 0.15
+    anchors: [[0, 0], [100, 10]]
 
 moat:
   roic_median_5y_pct:

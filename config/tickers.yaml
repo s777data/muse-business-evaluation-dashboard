@@ -113,6 +113,13 @@ tickers:
     # beta computed 2026-11-06: OLS slope of weekly returns vs SPY, Yahoo chart API, 105 weekly return points (2024-11-04 to 2026-11-06)
     beta: 2.2513
     beta_source: "computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points"
+  APLD:
+    name: "Applied Digital Corp."
+    cik: "0001144879"
+    exchange: NASDAQ
+    currency: USD
+    # No beta: added in v4 as the ai_infra anchor check for the
+    # notes-payable debt family; DCF fails closed (missing, renormalised).
   NKE:
     name: "NIKE, Inc."
     cik: "0000320187"

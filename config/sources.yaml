@@ -44,17 +44,31 @@ concepts:
   # differently (CoreWeave reports only DebtInstrumentCarryingAmount in its
   # 10-Q balance period; its LongTermDebt pair exists only in older periods).
   # Resolution priority at each candidate date, newest date first:
-  #   (a) a current + noncurrent PAIR from total_debt_current /
-  #       total_debt_noncurrent (first concept in list order with a value
-  #       at that date on each side), summed;
-  #   (b) a single TOTAL concept from the total_debt list below (first in
-  #       list order with a value at that date). A carrying-amount total is
-  #       used INSTEAD of components, never added to them (no double count).
+  #   (a) a GRAND TOTAL from total_debt_grand_total (carrying-amount style:
+  #       DebtInstrumentCarryingAmount). A grand total REPLACES all
+  #       components — it is used instead of them, never added (no double
+  #       count);
+  #   (b) FAMILY PAIRS, summed across families (v4): debt is tagged in
+  #       families that COEXIST on one balance sheet — the bank/debt
+  #       family (total_debt_current / total_debt_noncurrent) and the
+  #       notes-payable family (total_notes_current /
+  #       total_notes_noncurrent). For each family present at the date
+  #       with BOTH a current and a noncurrent value (first concept in
+  #       list order per side), take the pair sum; total debt is the sum
+  #       over families. (Applied Digital carries ~$6.4B almost entirely
+  #       as LongTermNotesPayable + NotesPayableCurrent; the bank family
+  #       alone resolved a stray $7.19M concept and understated its debt
+  #       ~1000x before this family existed.)
+  #   (c) a single TOTAL concept from the total_debt list below (first in
+  #       list order with a value at that date).
   # The total_debt list doubles as the annual series for ROIC history.
   # LongTermDebt sits last: it excludes the current portion, last resort.
   total_debt: ["DebtAndCapitalLeaseObligations", "LongTermDebtAndCapitalLeaseObligations", "DebtInstrumentCarryingAmount", "Debt", "Borrowings", "LongTermBorrowings", "LongTermDebt"]
+  total_debt_grand_total: ["DebtInstrumentCarryingAmount"]
   total_debt_current: ["LongTermDebtCurrent", "DebtCurrent", "LongTermBorrowingsCurrent"]
   total_debt_noncurrent: ["LongTermDebtNoncurrent", "DebtNoncurrent", "LongTermBorrowingsNoncurrent"]
+  total_notes_current: ["NotesPayableCurrent"]
+  total_notes_noncurrent: ["LongTermNotesPayable", "NotesPayableNoncurrent"]
   # Finance-lease and operating-lease liabilities are NOT added to total
   # debt: several total concepts above already embed capital/finance
   # leases, so adding lease liabilities would double count. The exclusion
