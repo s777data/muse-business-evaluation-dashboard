@@ -19,6 +19,17 @@
 // Business adds leverage (debt / TTM revenue) and interest-coverage
 // sub-scores with the repo's rebalanced weights.
 //
+// v3 (repo parity): FCF is SBC-adjusted owner FCF (operating cash flow
+// − capex − stock-based compensation) everywhere it is used — the FCF
+// margin median, TTM FCF / FCF yield, and the DCF base. Adjusted FCF
+// exists only for years where SBC is reported; if no year reports SBC
+// the FCF margin sub-score goes missing (fail closed) rather than using
+// the unadjusted figure. Business adds a dilution sub-score: CAGR of
+// diluted weighted-average shares over the available span (up to 5
+// years), with a continuity guard — a >5x or <0.2x single-year jump in
+// the filed series is a split/units break, so dilution goes missing and
+// is flagged instead of being scored off the break.
+//
 // Every weight and anchor below is copied verbatim from the repo's
 // config/scoring.yaml and config/dcf.yaml. No model is called anywhere.
 // Missing inputs are reported and weights renormalise over what is present
@@ -35,15 +46,16 @@ type Anchors = [number, number][];
 interface SubCfg { weight: number; anchors: Anchors }
 
 const BUSINESS_CFG: Record<string, SubCfg> = {
-  revenue_growth_latest_pct: { weight: 0.10, anchors: [[-20, 0], [0, 3], [25, 6], [75, 8.5], [150, 10]] },
+  revenue_growth_latest_pct: { weight: 0.075, anchors: [[-20, 0], [0, 3], [25, 6], [75, 8.5], [150, 10]] },
   revenue_cagr_5y_pct: { weight: 0.075, anchors: [[-5, 1], [0, 3], [10, 5.5], [20, 7.5], [30, 9], [40, 10]] },
-  gross_margin_median_5y_pct: { weight: 0.175, anchors: [[0, 0], [15, 2.5], [30, 4.5], [45, 6.5], [60, 8.5], [75, 10]] },
+  gross_margin_median_5y_pct: { weight: 0.15, anchors: [[0, 0], [15, 2.5], [30, 4.5], [45, 6.5], [60, 8.5], [75, 10]] },
   operating_margin_median_5y_pct: { weight: 0.15, anchors: [[-10, 0], [0, 3], [10, 5], [20, 7], [35, 9], [50, 10]] },
   fcf_margin_median_5y_pct: { weight: 0.15, anchors: [[-10, 0], [0, 2.5], [10, 5.5], [20, 8], [30, 10]] },
   net_cash_to_revenue: { weight: 0.10, anchors: [[-1.0, 0], [-0.25, 2], [0, 4.5], [0.25, 6.5], [0.5, 8], [1.0, 10]] },
   gross_margin_stdev_5y_pts: { weight: 0.10, anchors: [[0, 10], [5, 8], [10, 6], [20, 3.5], [30, 1.5], [40, 0]] },
   leverage_debt_to_revenue_ttm: { weight: 0.075, anchors: [[0, 10], [0.5, 8], [1.0, 6], [2.0, 4], [3.0, 2], [5.0, 0]] },
   interest_coverage_ttm: { weight: 0.075, anchors: [[0, 0], [1, 2], [2, 4], [4, 6], [8, 8], [15, 10]] },
+  dilution_share_count_growth_pct: { weight: 0.05, anchors: [[-3, 10], [0, 8.5], [2, 6], [5, 3.5], [10, 1], [20, 0]] },
 };
 
 const VALUE_CFG: Record<string, SubCfg> = {
@@ -115,6 +127,7 @@ const CONCEPTS: Record<string, string[]> = {
   investments_noncurrent: ["AvailableForSaleSecuritiesDebtSecuritiesNoncurrent"],
   total_debt: ["DebtAndCapitalLeaseObligations", "LongTermDebtAndCapitalLeaseObligations", "DebtInstrumentCarryingAmount", "Debt", "Borrowings", "LongTermBorrowings", "LongTermDebt"],
   interest_expense: ["InterestExpense", "InterestExpenseDebt", "InterestAndDebtExpense"],
+  share_based_compensation: ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"],
   diluted_shares: ["WeightedAverageNumberOfDilutedSharesOutstanding"],
   eps_diluted: ["EarningsPerShareDiluted"],
   rd_expense: ["ResearchAndDevelopmentExpense"],
@@ -470,6 +483,17 @@ export interface Metrics {
   rd_expense_latest: number | null;
   eps_diluted_latest: number | null;
   diluted_shares_latest: number | null;
+  sbc_latest: number | null;
+  sbc_ttm: number | null;
+  sbc_pct_of_revenue_latest: number | null;
+  sbc_not_reported_fcf_unadjusted_not_used: boolean;
+  sbc_ttm_unavailable: boolean;
+  fcf_raw_latest: number | null;
+  fcf_raw_ttm: number | null;
+  dilution_share_count_growth_pct: number | null;
+  dilution_span_years: number | null;
+  dilution_annual_points: number | null;
+  dilution_share_series_discontinuity: boolean;
   revenue_ttm: number | null;
   eps_ttm: number | null;
   fcf_ttm: number | null;
@@ -510,6 +534,11 @@ function computeMetrics(
     net_cash_to_revenue: null, capex_latest: null, capex_intensity_latest_pct: null,
     operating_cash_flow_latest: null, net_income_latest: null, rd_expense_latest: null,
     eps_diluted_latest: null, diluted_shares_latest: null, roic_median_5y_pct: null,
+    sbc_latest: null, sbc_ttm: null, sbc_pct_of_revenue_latest: null,
+    sbc_not_reported_fcf_unadjusted_not_used: false, sbc_ttm_unavailable: false,
+    fcf_raw_latest: null, fcf_raw_ttm: null,
+    dilution_share_count_growth_pct: null, dilution_span_years: null,
+    dilution_annual_points: null, dilution_share_series_discontinuity: false,
     revenue_ttm: null, eps_ttm: null, fcf_ttm: null, ttm_end: null, ttm_method: null,
     operating_income_ttm: null, interest_expense_ttm: null, interest_coverage_ttm: null,
     interest_coverage_missing_reason: null, leverage_debt_to_revenue_ttm: null,
@@ -543,13 +572,32 @@ function computeMetrics(
   const om = ratio(series.operating_income ?? [], rev);
   const ocf = byEnd(series.operating_cash_flow ?? []);
   const capexMap = byEnd(series.capex ?? []);
+  const sbcMap = byEnd(series.share_based_compensation ?? []);
   const revMap = byEnd(rev);
+  const fcfRawByEnd = new Map<string, number>();
+  for (const [e, v] of ocf) if (capexMap.has(e)) fcfRawByEnd.set(e, v - (capexMap.get(e) ?? 0));
+  // Owner FCF (v3): subtract stock-based compensation year by year.
+  // Adjusted FCF exists ONLY for years where SBC is reported; if no
+  // year reports SBC the FCF margin sub-score goes missing (fail
+  // closed) instead of falling back to the unadjusted figure.
   const fcfByEnd = new Map<string, number>();
-  for (const [e, v] of ocf) if (capexMap.has(e)) fcfByEnd.set(e, v - (capexMap.get(e) ?? 0));
+  for (const e of [...fcfRawByEnd.keys()].sort()) {
+    const sbc = sbcMap.get(e);
+    if (sbc != null) fcfByEnd.set(e, (fcfRawByEnd.get(e) ?? 0) - sbc);
+  }
+  m.sbc_latest = sbcMap.size ? (sbcMap.get([...sbcMap.keys()].sort().pop()!) ?? null) : null;
+  m.sbc_not_reported_fcf_unadjusted_not_used = sbcMap.size === 0;
+  if (fcfRawByEnd.size) {
+    const lastRaw = [...fcfRawByEnd.keys()].sort().pop()!;
+    m.fcf_raw_latest = fcfRawByEnd.get(lastRaw) ?? null;
+  }
   const fcfm = [...fcfByEnd.keys()].sort().filter((e) => revMap.get(e)).map((e) => ({ end: e, value: ((fcfByEnd.get(e) ?? 0) / (revMap.get(e) ?? 1)) * 100 }));
   if (fcfByEnd.size) {
     const lastKey = [...fcfByEnd.keys()].sort().pop()!;
     m.fcf_latest = fcfByEnd.get(lastKey) ?? null;
+    const sbcAtEnd = sbcMap.get(lastKey);
+    const revAtEnd = revMap.get(lastKey);
+    m.sbc_pct_of_revenue_latest = sbcAtEnd != null && revAtEnd ? (sbcAtEnd / revAtEnd) * 100 : null;
   }
   const gmVals = gm.map((r) => r.value);
   m.gross_margin_latest_pct = gmVals.length ? (gmVals[gmVals.length - 1] ?? null) : null;
@@ -612,6 +660,33 @@ function computeMetrics(
   m.eps_diluted_latest = latestOf(series.eps_diluted);
   m.diluted_shares_latest = latestOf(series.diluted_shares);
 
+  // Dilution (v3): CAGR of the annual diluted share count over the
+  // available span, up to 5 years back from the latest annual point.
+  // >= 2 points required; a >5x or <0.2x single-year jump in the window
+  // is a split/units break — fail closed (missing + flagged).
+  const shareRowsDil = (series.diluted_shares ?? []).filter((r) => r.value);
+  if (shareRowsDil.length >= 2) {
+    const latestRow = shareRowsDil[shareRowsDil.length - 1]!;
+    const cutoff = parseDay(latestRow.end) - Math.floor(5 * 365.25) * 86400000;
+    const windowRows = shareRowsDil.filter((r) => parseDay(r.end) >= cutoff);
+    const disc = windowRows.some((r, i) => {
+      if (i === 0) return false;
+      const prev = windowRows[i - 1]!;
+      if (!(prev.value > 0)) return false;
+      const ratio = r.value / prev.value;
+      return ratio > 5 || ratio < 0.2;
+    });
+    m.dilution_share_series_discontinuity = disc;
+    const earliestRow = windowRows[0]!;
+    const spanDays = (parseDay(latestRow.end) - parseDay(earliestRow.end)) / 86400000;
+    if (!disc && spanDays > 0 && earliestRow.value > 0) {
+      const spanYears = spanDays / 365.25;
+      m.dilution_span_years = Math.round(spanYears * 100) / 100;
+      m.dilution_share_count_growth_pct = ((latestRow.value / earliestRow.value) ** (1 / spanYears) - 1) * 100;
+      m.dilution_annual_points = windowRows.length;
+    }
+  }
+
   // Through-cycle ROIC (repo): after-tax operating income / invested capital.
   const eq = byEnd(series.equity ?? []), db = byEnd(series.total_debt ?? []), ca = byEnd(series.cash ?? []);
   const ic = byEnd(series.investments_current ?? []), inn = byEnd(series.investments_noncurrent ?? []);
@@ -634,7 +709,14 @@ function computeMetrics(
   m.eps_ttm = ttmMap.eps_diluted ? ttmMap.eps_diluted.value : m.eps_diluted_latest;
   const ocfTtm = ttmMap.operating_cash_flow;
   const capexTtm = ttmMap.capex;
-  m.fcf_ttm = ocfTtm && capexTtm ? ocfTtm.value - capexTtm.value : m.fcf_latest;
+  const sbcTtm = ttmMap.share_based_compensation;
+  m.sbc_ttm = sbcTtm ? sbcTtm.value : null;
+  m.sbc_ttm_unavailable = (series.share_based_compensation?.length ?? 0) > 0 && !sbcTtm;
+  m.fcf_raw_ttm = ocfTtm && capexTtm ? ocfTtm.value - capexTtm.value : null;
+  // TTM FCF is SBC-adjusted owner FCF (v3); null when any bridge leg is
+  // missing — the FCF-yield consumer falls back to the latest annual
+  // adjusted FCF, exactly as the repo's add_price_metrics does.
+  m.fcf_ttm = ocfTtm && capexTtm && sbcTtm ? ocfTtm.value - capexTtm.value - sbcTtm.value : null;
   return m;
 }
 
@@ -957,7 +1039,7 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
   // TTM bridge for the flow metrics that feed trailing multiples and the
   // interest-coverage sub-score.
   const ttmMap: Record<string, TtmInfo> = {};
-  for (const metric of ["revenue", "eps_diluted", "operating_cash_flow", "capex", "operating_income", "interest_expense"]) {
+  for (const metric of ["revenue", "eps_diluted", "operating_cash_flow", "capex", "operating_income", "interest_expense", "share_based_compensation"]) {
     const candidates = CONCEPTS[metric];
     const annual = series[metric] ?? [];
     const lastAnnual = annual[annual.length - 1];
@@ -1050,6 +1132,16 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
   if (m.interest_coverage_ttm == null) {
     dataQuality.push(`Interest coverage sub-score missing (${m.interest_coverage_missing_reason ?? "unknown"}) — weight renormalised rather than awarded a free score.`);
   }
+  if (m.sbc_not_reported_fcf_unadjusted_not_used) {
+    dataQuality.push("No stock-based compensation was reported in any filed year — fail closed (v3): the FCF margin sub-score is marked missing rather than computed on unadjusted FCF. Raw FCF is disclosed in the KPIs as fcf_raw_*.");
+  } else if (m.sbc_pct_of_revenue_latest != null) {
+    dataQuality.push(`FCF is SBC-adjusted owner FCF (v3) — operating cash flow − capex − stock comp. Stock comp was ${m.sbc_pct_of_revenue_latest.toFixed(1)}% of revenue in the latest year${m.sbc_ttm != null ? ` (TTM SBC ${fmtUsd(m.sbc_ttm)})` : ""}; raw FCF is kept in the KPIs as fcf_raw_*.`);
+  }
+  if (m.dilution_share_series_discontinuity) {
+    dataQuality.push("Dilution sub-score missing: the filed diluted share-count series has a >5x or <0.2x single-year jump (an unrestated split or a shares-vs-thousands units break) — fail closed, flagged rather than scored off the break.");
+  } else if (m.dilution_share_count_growth_pct != null) {
+    dataQuality.push(`Dilution: diluted share count changed ${m.dilution_share_count_growth_pct >= 0 ? "+" : ""}${m.dilution_share_count_growth_pct.toFixed(2)}%/yr over ${m.dilution_span_years ?? "?"} years (${m.dilution_annual_points ?? "?"} annual points) — Business sub-score (v3).`);
+  }
   if (!conc.single_customer) dataQuality.push("No single-customer concentration sentence was extracted from the latest 10-K — the concentration sub-score is missing and moat weights renormalise.");
   dataQuality.push(PEER_UNIVERSE_NOTE);
   dataQuality.push("Consensus EPS: missing by design (v1, free sources only) — forward multiples use filed actuals and the config DCF only.");
@@ -1067,6 +1159,7 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
     net_cash_to_revenue: m.net_cash_to_revenue,
     leverage_debt_to_revenue_ttm: m.leverage_debt_to_revenue_ttm,
     interest_coverage_ttm: m.interest_coverage_ttm,
+    dilution_share_count_growth_pct: m.dilution_share_count_growth_pct,
     gross_margin_stdev_5y_pts: m.gross_margin_stdev_5y_pts,
     trailing_pe: m.trailing_pe,
     price_to_sales: m.price_to_sales,
@@ -1116,8 +1209,21 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
     ? ` ${levParts.join(" and ")}.`
     : " Leverage checks (debt-to-TTM-revenue and interest coverage) were excluded: filed debt or interest data could not be determined.";
 
+  // Generic dilution / SBC sentence (repo explanations.dilution_note).
+  const dilParts: string[] = [];
+  const dilEntry = business.subscores.dilution_share_count_growth_pct;
+  if (dilEntry) {
+    dilParts.push(`Diluted share count changed ${dilEntry.value >= 0 ? "+" : ""}${dilEntry.value}%/yr${m.dilution_span_years != null ? ` over ${m.dilution_span_years} years` : ""}, scored ${dilEntry.score}/10`);
+  }
+  if (m.sbc_not_reported_fcf_unadjusted_not_used) {
+    dilParts.push("no stock-based compensation was reported, so the FCF margin sub-score was excluded rather than computed on unadjusted FCF");
+  } else if (m.sbc_pct_of_revenue_latest != null) {
+    dilParts.push(`FCF is SBC-adjusted owner FCF (stock comp was ${m.sbc_pct_of_revenue_latest.toFixed(1)}% of revenue in the latest year)`);
+  }
+  const dilutionNote = dilParts.length ? ` ${dilParts.join("; ")}.` : "";
+
   const explanations = {
-    business: explain("Business", business, leverageNote),
+    business: explain("Business", business, leverageNote + dilutionNote),
     value: explain("Value", value, fv && upside != null ? ` The DCF fair value is $${fv.fair_value_per_share.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} vs the current $${price.last_close.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${upside >= 0 ? "+" : ""}${upside.toFixed(1)}%).` : ""),
     moat: explain("Moat", moat),
   };
