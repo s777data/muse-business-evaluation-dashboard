@@ -121,6 +121,8 @@ const searchResponse = z.object({
         market_cap: nullableNum,
         price_to_sales: nullableNum,
         ev_to_sales: nullableNum,
+        relative_ev_to_sales_percentile: nullableNum,
+        negative_trailing_pe_not_scored: z.boolean(),
         trailing_pe: nullableNum,
         fcf_yield_latest_pct: nullableNum,
         discount_from_52w_high_pct: nullableNum,
@@ -172,6 +174,13 @@ const searchResponse = z.object({
       moatChecks: z.array(z.object({ check: z.string(), status: z.string(), evidence: z.string() })),
       explanations: z.object({ business: z.string(), value: z.string(), moat: z.string() }),
       dataQuality: z.array(z.string()),
+      peerGroup: z
+        .object({
+          name: z.string(),
+          membersWithEvToSales: z.number(),
+          relativeEvToSalesPercentile: nullableNum,
+        })
+        .nullable(),
       sources: z.object({
         filingUrl: z.string().nullable(),
         priceFeed: z.string(),

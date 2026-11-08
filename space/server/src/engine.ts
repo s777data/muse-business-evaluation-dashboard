@@ -30,6 +30,22 @@
 // the filed series is a split/units break, so dilution goes missing and
 // is flagged instead of being scored off the break.
 //
+// v4 (repo parity): (1) debt resolution adds the notes-payable family
+// (NotesPayableCurrent / LongTermNotesPayable / NotesPayableNoncurrent)
+// — family pairs SUM across the bank/debt and notes families, and a
+// carrying-amount grand total (DebtInstrumentCarryingAmount) replaces
+// all components; (2) Value adds a peer-relative EV/S sub-score: the
+// subject's cheapness percentile within its sector peer group
+// (config/peers.yaml groups, mirrored below), weight 0.15 funded by
+// trailing_pe 0.20->0.10 and dcf_upside 0.25->0.20; peer EV/S is
+// computed with this port's own per-ticker pipeline (EV/S only);
+// (3) the negative-P/E guard is explicit — trailing EPS <= 0 marks the
+// P/E missing and flags negative_trailing_pe_not_scored (the port
+// already refused to score a non-positive P/E; v4 names the flag to
+// match the repo). Moat's revenue percentile is still NOT computed in
+// the Space search (marked unavailable, disclosed) — only the relative
+// EV/S percentile is.
+//
 // Every weight and anchor below is copied verbatim from the repo's
 // config/scoring.yaml and config/dcf.yaml. No model is called anywhere.
 // Missing inputs are reported and weights renormalise over what is present
@@ -59,12 +75,13 @@ const BUSINESS_CFG: Record<string, SubCfg> = {
 };
 
 const VALUE_CFG: Record<string, SubCfg> = {
-  trailing_pe: { weight: 0.20, anchors: [[3, 10], [5, 10], [10, 8], [15, 6.5], [25, 4.5], [40, 2.5], [60, 1]] },
+  trailing_pe: { weight: 0.10, anchors: [[3, 10], [5, 10], [10, 8], [15, 6.5], [25, 4.5], [40, 2.5], [60, 1]] },
   price_to_sales: { weight: 0.15, anchors: [[0.5, 10], [1, 9], [2, 7.5], [4, 5.5], [7, 3.5], [10, 2], [15, 0.5]] },
   ev_to_sales: { weight: 0.10, anchors: [[0.5, 10], [1, 9], [2, 7.5], [4, 5.5], [7, 3.5], [10, 2], [15, 0.5]] },
   fcf_yield_latest_pct: { weight: 0.20, anchors: [[-2, 0], [0, 1], [2, 3.5], [4, 5.5], [6, 7.5], [8, 9], [12, 10]] },
-  dcf_upside_pct: { weight: 0.25, anchors: [[-50, 0], [-25, 2], [0, 4.5], [25, 6.5], [50, 8], [100, 10]] },
+  dcf_upside_pct: { weight: 0.20, anchors: [[-50, 0], [-25, 2], [0, 4.5], [25, 6.5], [50, 8], [100, 10]] },
   discount_from_52w_high_pct: { weight: 0.10, anchors: [[0, 2], [-15, 4], [-30, 6], [-45, 7.5], [-60, 9]] },
+  relative_ev_to_sales_percentile: { weight: 0.15, anchors: [[0, 0], [100, 10]] },
 };
 
 const MOAT_CFG: Record<string, SubCfg> = {
@@ -138,14 +155,55 @@ const UNIT_PREF: Record<string, string[]> = { diluted_shares: ["shares"], eps_di
 
 // Debt component concept lists (repo config/sources.yaml). Total debt is
 // resolved from instant rows of ALL of these — see resolveTotalDebt.
+// Debt lives in families that coexist on one balance sheet: the
+// bank/debt family and the notes-payable family (v4).
 const DEBT_CURRENT_CONCEPTS = ["LongTermDebtCurrent", "DebtCurrent", "LongTermBorrowingsCurrent"];
 const DEBT_NONCURRENT_CONCEPTS = ["LongTermDebtNoncurrent", "DebtNoncurrent", "LongTermBorrowingsNoncurrent"];
+const DEBT_NOTES_CURRENT_CONCEPTS = ["NotesPayableCurrent"];
+const DEBT_NOTES_NONCURRENT_CONCEPTS = ["LongTermNotesPayable", "NotesPayableNoncurrent"];
+const DEBT_GRAND_TOTAL_CONCEPTS = ["DebtInstrumentCarryingAmount"];
 
-// Repo peer universe for MU (config/peers.yaml) — used ONLY as the labeled
-// percentile universe; the Space search marks percentiles unavailable
-// rather than running 8 extra EDGAR pulls per search.
+// Sector peer groups (repo config/peers.yaml, mirrored by symbol — CIKs
+// resolve through the same EDGAR company-tickers map as the subject).
+// Used for the peer-relative EV/S value sub-score ONLY: peer EV/S is
+// computed with this port's per-ticker pipeline. Moat's revenue
+// percentile is still not computed in the Space search (marked
+// unavailable, disclosed) — run the repo engine for the full peer run.
+const PEER_GROUPS: Record<string, string[]> = {
+  memory_semis: ["NVDA", "AMD", "AVGO", "INTC", "QCOM", "MRVL", "WDC", "STX"],
+  connectivity_semis: ["AVGO", "MRVL", "NVDA", "AMD", "ANET", "ALAB"],
+  ai_infra: ["APLD", "CORZ", "WULF", "HUT", "CIFR"],
+  digital_assets_ai: ["COIN", "RIOT", "MARA", "CLSK", "HUT"],
+  space_comms: ["RKLB", "IRDM", "GSAT", "VSAT"],
+  ipp_power: ["NRG", "CEG", "TLN", "AES"],
+  industrial_cooling: ["VRT", "TT", "CARR", "JCI", "AAON"],
+  enterprise_software: ["MSFT", "AMZN", "GOOGL", "CRM", "NOW", "ADBE"],
+  health_plans: ["UNH", "ELV", "CNC", "MOH", "HUM"],
+  fintech_lending: ["SOFI", "UPST", "AFRM", "COIN", "HOOD"],
+  solar: ["ENPH", "SEDG", "FSLR", "RUN", "NXT", "ARRY"],
+  drones_defense: ["AVAV", "KTOS", "RCAT", "UAVS"],
+  athletic_consumer: ["DECK", "LULU", "UA", "CROX"],
+};
+const SUBJECT_GROUPS: Record<string, string> = {
+  MU: "memory_semis",
+  CRDO: "connectivity_semis",
+  CRWV: "ai_infra",
+  GLXY: "digital_assets_ai",
+  ASTS: "space_comms",
+  VST: "ipp_power",
+  MOD: "industrial_cooling",
+  ORCL: "enterprise_software",
+  ALHC: "health_plans",
+  FIGR: "fintech_lending",
+  SHLS: "solar",
+  ONDS: "drones_defense",
+  NKE: "athletic_consumer",
+};
+// Repo config/peers.yaml relative_ev_to_sales_min_group.
+const RELATIVE_EVS_MIN_GROUP = 4;
+
 const PEER_UNIVERSE_NOTE =
-  "Repo peer set is MU-specific (NVDA, AMD, AVGO, INTC, QCOM, MRVL, WDC, STX from SEC EDGAR). Peer percentile is not computed in the Space search — run the repo engine for the full peer run. SK hynix and Samsung are excluded in v1: not SEC EDGAR XBRL filers.";
+  "Peer-relative EV/S (v4) is computed in the Space search against the subject's sector group from the repo's config/peers.yaml (EDGAR filers only; SK hynix, Samsung, Nebius and IREN are excluded — not SEC US-GAAP XBRL filers). Moat's revenue percentile vs peers is not computed in the Space search — run the repo engine for it.";
 
 /* ------------------------------- fetch utils ------------------------------ */
 
@@ -215,10 +273,12 @@ function annualSeries(facts: Record<string, unknown>, candidates: string[], metr
 // Repo parity (edgar.py / metrics.py): balance-sheet "latest" is the
 // latest filed instant across 10-K and 10-Q (not just the annual 10-K
 // row), and total debt is resolved across every debt concept at the
-// latest determinable date — (a) current + noncurrent pair, then
-// (b) a single total concept in config priority order. A carrying-amount
-// total replaces its components, never adds to them. Fail closed: when
-// nothing resolves, debt is null and debt-derived sub-scores go missing.
+// latest determinable date — (a) a carrying-amount GRAND TOTAL replaces
+// all components, then (b) family pairs SUMMED across the bank/debt and
+// notes-payable families, then (c) a single total concept in config
+// priority order. A carrying-amount total replaces its components,
+// never adds to them. Fail closed: when nothing resolves, debt is null
+// and debt-derived sub-scores go missing.
 
 function unitRowsRaw(facts: Record<string, unknown>, concept: string, metric: string): Record<string, unknown>[] {
   const gaap = ((facts.facts as Record<string, unknown> | undefined)?.["us-gaap"] ?? {}) as Record<string, unknown>;
@@ -268,8 +328,8 @@ function latestInstantForMetric(facts: Record<string, unknown>, candidates: stri
 
 export interface DebtInstants {
   totals: Map<string, Map<string, number>>;
-  current: Map<string, Map<string, number>>;
-  noncurrent: Map<string, Map<string, number>>;
+  grandTotals: Map<string, Map<string, number>>;
+  families: Map<string, { current: Map<string, Map<string, number>>; noncurrent: Map<string, Map<string, number>> }>;
 }
 
 function buildDebtInstants(facts: Record<string, unknown>): DebtInstants {
@@ -283,8 +343,11 @@ function buildDebtInstants(facts: Record<string, unknown>): DebtInstants {
   };
   return {
     totals: build(CONCEPTS.total_debt ?? []),
-    current: build(DEBT_CURRENT_CONCEPTS),
-    noncurrent: build(DEBT_NONCURRENT_CONCEPTS),
+    grandTotals: build(DEBT_GRAND_TOTAL_CONCEPTS),
+    families: new Map([
+      ["bank_debt", { current: build(DEBT_CURRENT_CONCEPTS), noncurrent: build(DEBT_NONCURRENT_CONCEPTS) }],
+      ["notes_payable", { current: build(DEBT_NOTES_CURRENT_CONCEPTS), noncurrent: build(DEBT_NOTES_NONCURRENT_CONCEPTS) }],
+    ]),
   };
 }
 
@@ -304,18 +367,47 @@ function resolveTotalDebt(inst: DebtInstants, fallback: SeriesRow | null): DebtR
     return null;
   };
   const dates = new Set<string>();
-  for (const group of [inst.totals, inst.current, inst.noncurrent]) {
+  for (const group of [inst.totals, inst.grandTotals]) {
     for (const byEnd of group.values()) for (const e of byEnd.keys()) dates.add(e);
   }
+  for (const fam of inst.families.values()) {
+    for (const side of [fam.current, fam.noncurrent]) {
+      for (const byEnd of side.values()) for (const e of byEnd.keys()) dates.add(e);
+    }
+  }
   for (const end of [...dates].sort().reverse()) {
-    const cur = firstAt(inst.current, end);
-    const non = firstAt(inst.noncurrent, end);
-    if (cur && non) {
+    // (a) A carrying-amount grand total REPLACES all components.
+    const gt = firstAt(inst.grandTotals, end);
+    if (gt) return { value: gt[1], as_of: end, method: `single_total:${gt[0]}`, components: { concept: gt[0] } };
+    // (b) Family pairs, summed across families that resolve at this date.
+    const parts: Record<string, unknown>[] = [];
+    for (const [name, fam] of inst.families) {
+      const cur = firstAt(fam.current, end);
+      const non = firstAt(fam.noncurrent, end);
+      if (cur && non) {
+        parts.push({
+          family: name, current_concept: cur[0], current_value: cur[1],
+          noncurrent_concept: non[0], noncurrent_value: non[1], family_total: cur[1] + non[1],
+        });
+      }
+    }
+    if (parts.length === 1) {
+      const p = parts[0]!;
       return {
-        value: cur[1] + non[1], as_of: end, method: "current_plus_noncurrent_pair",
-        components: { current_concept: cur[0], current_value: cur[1], noncurrent_concept: non[0], noncurrent_value: non[1] },
+        value: p.family_total as number, as_of: end, method: "current_plus_noncurrent_pair",
+        components: {
+          family: p.family, current_concept: p.current_concept, current_value: p.current_value,
+          noncurrent_concept: p.noncurrent_concept, noncurrent_value: p.noncurrent_value,
+        },
       };
     }
+    if (parts.length > 1) {
+      return {
+        value: parts.reduce((a, p) => a + (p.family_total as number), 0), as_of: end,
+        method: "family_pairs_sum", components: { families: parts },
+      };
+    }
+    // (c) A single total concept in config priority order.
     const tot = firstAt(inst.totals, end);
     if (tot) return { value: tot[1], as_of: end, method: `single_total:${tot[0]}`, components: { concept: tot[0] } };
   }
@@ -511,6 +603,8 @@ export interface Metrics {
   market_cap: number | null;
   price_to_sales: number | null;
   ev_to_sales: number | null;
+  relative_ev_to_sales_percentile: number | null;
+  negative_trailing_pe_not_scored: boolean;
   trailing_pe: number | null;
   fcf_yield_latest_pct: number | null;
   discount_from_52w_high_pct: number | null;
@@ -544,7 +638,9 @@ function computeMetrics(
     interest_coverage_missing_reason: null, leverage_debt_to_revenue_ttm: null,
     total_debt_resolution: null, debt_not_determinable_fail_closed: false,
     diluted_shares_current: null,
-    market_cap: null, price_to_sales: null, ev_to_sales: null, trailing_pe: null,
+    market_cap: null, price_to_sales: null, ev_to_sales: null,
+    relative_ev_to_sales_percentile: null, negative_trailing_pe_not_scored: false,
+    trailing_pe: null,
     fcf_yield_latest_pct: null, discount_from_52w_high_pct: null,
   };
   if (!rev.length || m.revenue_latest == null) return m;
@@ -1009,6 +1105,7 @@ export interface EngineResult {
   moatChecks: { check: string; status: string; evidence: string }[];
   explanations: { business: string; value: string; moat: string };
   dataQuality: string[];
+  peerGroup: { name: string; membersWithEvToSales: number; relativeEvToSalesPercentile: number | null } | null;
   sources: { filingUrl: string | null; priceFeed: string; scoringConfig: string; dcfConfig: string; peerNote: string };
 }
 
@@ -1026,16 +1123,12 @@ async function resolveTicker(symbol: string): Promise<{ cik: string; name: strin
   return tickerMapCache.map.get(symbol) ?? null;
 }
 
-export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
-  const symbol = rawSymbol.trim().toUpperCase();
-  if (!/^[A-Z][A-Z0-9.\-]{0,9}$/.test(symbol)) throw new Error(`"${rawSymbol}" is not a valid ticker symbol.`);
-  const resolved = await resolveTicker(symbol);
-  if (!resolved) throw new Error(`Ticker ${symbol} was not found in SEC EDGAR's company tickers list — the engine covers US-listed SEC filers only.`);
-
-  const facts = await fetchJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${resolved.cik}.json`, 40000);
+// Facts -> metrics pipeline shared by the subject evaluation and the v4
+// peer EV/S helper: annual series, TTM bridge, balance-sheet latest
+// instants + debt resolution, computed metrics, current share count.
+function buildMetrics(facts: Record<string, unknown>): { m: Metrics; ttmMap: Record<string, TtmInfo> } {
   const series: Record<string, SeriesRow[]> = {};
   for (const [metric, candidates] of Object.entries(CONCEPTS)) series[metric] = annualSeries(facts, candidates, metric);
-  const entityName = (facts.entityName as string | undefined) ?? resolved.name;
   // TTM bridge for the flow metrics that feed trailing multiples and the
   // interest-coverage sub-score.
   const ttmMap: Record<string, TtmInfo> = {};
@@ -1069,6 +1162,48 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
       .sort((a, b) => durDays(a) - durDays(b) || String(b.filed ?? "").localeCompare(String(a.filed ?? "")));
     m.diluted_shares_current = atMax[0]?.value ?? null;
   }
+  return { m, ttmMap };
+}
+
+// EV/S for a peer, computed with the same pipeline as the subject (no
+// beta, no DCF, no concentration pull — EV/S only). Fails soft: any
+// fetch/parse problem returns null and the peer drops out of the group.
+async function peerEvToSales(symbol: string): Promise<number | null> {
+  try {
+    const resolved = await resolveTicker(symbol);
+    if (!resolved) return null;
+    const facts = await fetchJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${resolved.cik}.json`, 40000);
+    const { m } = buildMetrics(facts);
+    const shares = m.diluted_shares_current ?? m.diluted_shares_latest;
+    const revTtm = m.revenue_ttm ?? m.revenue_latest;
+    if (!shares || !revTtm) return null;
+    const price = await getPrice(symbol);
+    const marketCap = price.last_close * shares;
+    return (marketCap - (m.net_cash_latest ?? 0)) / revTtm;
+  } catch {
+    return null;
+  }
+}
+
+// Cheapness percentile within the group (subject + peers), the repo's
+// mid-rank convention inverted for cheapness: peers with HIGHER EV/S
+// count in the subject's favour, ties (incl. self) count half.
+function cheapnessPercentile(value: number, peerValues: number[]): number {
+  const groupSize = 1 + peerValues.length;
+  const higher = peerValues.filter((v) => v > value).length;
+  const ties = 1 + peerValues.filter((v) => v === value).length;
+  return Math.round(((higher + 0.5 * ties) / groupSize) * 1000) / 10;
+}
+
+export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
+  const symbol = rawSymbol.trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9.\-]{0,9}$/.test(symbol)) throw new Error(`"${rawSymbol}" is not a valid ticker symbol.`);
+  const resolved = await resolveTicker(symbol);
+  if (!resolved) throw new Error(`Ticker ${symbol} was not found in SEC EDGAR's company tickers list — the engine covers US-listed SEC filers only.`);
+
+  const facts = await fetchJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${resolved.cik}.json`, 40000);
+  const entityName = (facts.entityName as string | undefined) ?? resolved.name;
+  const { m, ttmMap } = buildMetrics(facts);
   if (m.revenue_latest == null) throw new Error(`EDGAR returned no annual revenue series for ${symbol} — the engine cannot score it from filings.`);
 
   const price = await getPrice(symbol); // fail closed — throws with both feed errors
@@ -1082,12 +1217,33 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
     m.market_cap = price.last_close * sharesForCap;
     m.price_to_sales = m.market_cap / revTtm;
     m.ev_to_sales = (m.market_cap - (m.net_cash_latest ?? 0)) / revTtm;
-    // Guard the repo's blind spot: a non-positive filed EPS makes P/E
-    // meaningless, so it is marked missing (renormalised), not scored.
+    // Negative-P/E guard (v4, repo parity): a non-positive filed EPS
+    // makes P/E meaningless, so it is marked missing (renormalised),
+    // not scored, and flagged.
+    m.negative_trailing_pe_not_scored = m.eps_ttm != null && m.eps_ttm <= 0;
     m.trailing_pe = m.eps_ttm != null && m.eps_ttm > 0 ? price.last_close / m.eps_ttm : null;
     const fcfForYield = m.fcf_ttm ?? m.fcf_latest;
     m.fcf_yield_latest_pct = fcfForYield != null ? (fcfForYield / m.market_cap) * 100 : null;
     m.discount_from_52w_high_pct = price.high_52w ? (price.last_close / price.high_52w - 1) * 100 : null;
+  }
+
+  // Peer-relative EV/S (v4): cheapness percentile within the subject's
+  // sector group. Peers with no computable EV/S drop out; the sub-score
+  // is missing when the group (subject + peers with EV/S) is below the
+  // repo's minimum of 4, or when the subject has no assigned group.
+  let peerGroup: EngineResult["peerGroup"] = null;
+  const groupName = SUBJECT_GROUPS[symbol];
+  if (groupName && PEER_GROUPS[groupName]) {
+    const peerEvs: number[] = [];
+    for (const peerSymbol of PEER_GROUPS[groupName]) {
+      const ev = await peerEvToSales(peerSymbol);
+      if (ev != null) peerEvs.push(ev);
+    }
+    const groupSize = (m.ev_to_sales != null ? 1 : 0) + peerEvs.length;
+    if (m.ev_to_sales != null && groupSize >= RELATIVE_EVS_MIN_GROUP) {
+      m.relative_ev_to_sales_percentile = cheapnessPercentile(m.ev_to_sales, peerEvs);
+    }
+    peerGroup = { name: groupName, membersWithEvToSales: groupSize, relativeEvToSalesPercentile: m.relative_ev_to_sales_percentile };
   }
 
   const fyYear = m.fiscal_year_end ? Number(m.fiscal_year_end.slice(0, 4)) : null;
@@ -1127,7 +1283,7 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
   if (m.debt_not_determinable_fail_closed) {
     dataQuality.push("Total debt could not be determined from any filed debt concept at the latest balance date — fail closed: the net-cash and leverage sub-scores are marked missing and weights renormalised. Missing debt is never treated as zero debt.");
   } else if (m.total_debt_resolution) {
-    dataQuality.push(`Total debt ${fmtUsd(m.total_debt_latest ?? 0)} resolved as of ${m.total_debt_resolution.as_of} via ${m.total_debt_resolution.method} (repo priority: current+noncurrent pair, then single total concept). Finance-lease and operating-lease liabilities are excluded from total debt — several total concepts already embed capital/finance leases.`);
+    dataQuality.push(`Total debt ${fmtUsd(m.total_debt_latest ?? 0)} resolved as of ${m.total_debt_resolution.as_of} via ${m.total_debt_resolution.method} (repo priority: carrying-amount grand total, then family pairs summed across the bank/debt and notes-payable families, then single total concept). Finance-lease and operating-lease liabilities are excluded from total debt — several total concepts already embed capital/finance leases.`);
   }
   if (m.interest_coverage_ttm == null) {
     dataQuality.push(`Interest coverage sub-score missing (${m.interest_coverage_missing_reason ?? "unknown"}) — weight renormalised rather than awarded a free score.`);
@@ -1143,6 +1299,16 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
     dataQuality.push(`Dilution: diluted share count changed ${m.dilution_share_count_growth_pct >= 0 ? "+" : ""}${m.dilution_share_count_growth_pct.toFixed(2)}%/yr over ${m.dilution_span_years ?? "?"} years (${m.dilution_annual_points ?? "?"} annual points) — Business sub-score (v3).`);
   }
   if (!conc.single_customer) dataQuality.push("No single-customer concentration sentence was extracted from the latest 10-K — the concentration sub-score is missing and moat weights renormalise.");
+  if (m.negative_trailing_pe_not_scored) {
+    dataQuality.push("Negative-P/E guard (v4): trailing EPS (TTM) is not positive, so the trailing P/E metric is marked missing and excluded from the value score (weights renormalised) rather than scored — a negative P/E is not a cheapness signal.");
+  }
+  if (peerGroup) {
+    dataQuality.push(
+      peerGroup.relativeEvToSalesPercentile != null
+        ? `Relative EV/S (v4): ${symbol} trades at EV/S ${m.ev_to_sales != null ? m.ev_to_sales.toFixed(2) : "n/a"}x — cheapness percentile ${peerGroup.relativeEvToSalesPercentile} within its ${peerGroup.name} sector group (${peerGroup.membersWithEvToSales} members with computable EV/S, subject included); sub-score ${(peerGroup.relativeEvToSalesPercentile / 10).toFixed(2)}/10 at 0.15 weight.`
+        : `Relative EV/S (v4): sub-score missing — the ${peerGroup.name} group has only ${peerGroup.membersWithEvToSales} members with computable EV/S (minimum ${RELATIVE_EVS_MIN_GROUP}) or the subject's own EV/S is unavailable; the 0.15 weight renormalises over the remaining value sub-scores.`,
+    );
+  }
   dataQuality.push(PEER_UNIVERSE_NOTE);
   dataQuality.push("Consensus EPS: missing by design (v1, free sources only) — forward multiples use filed actuals and the config DCF only.");
   dataQuality.push("Switching costs / contract lock-in: not evaluated in v1 — no structured free source; flagged, not proxied.");
@@ -1164,6 +1330,7 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
     trailing_pe: m.trailing_pe,
     price_to_sales: m.price_to_sales,
     ev_to_sales: m.ev_to_sales,
+    relative_ev_to_sales_percentile: m.relative_ev_to_sales_percentile,
     fcf_yield_latest_pct: m.fcf_yield_latest_pct,
     discount_from_52w_high_pct: m.discount_from_52w_high_pct,
     roic_median_5y_pct: m.roic_median_5y_pct,
@@ -1255,6 +1422,7 @@ export async function evaluateTicker(rawSymbol: string): Promise<EngineResult> {
     moatChecks,
     explanations,
     dataQuality,
+    peerGroup,
     sources: {
       filingUrl: conc.filing?.url ?? null,
       priceFeed: price.source,
