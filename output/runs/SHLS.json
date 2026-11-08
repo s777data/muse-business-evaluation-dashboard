@@ -183,6 +183,7 @@
     "dilution_share_count_growth_pct": 14.121619188865587,
     "dilution_span_years": 4.0,
     "dilution_annual_points": 5,
+    "dilution_share_series_discontinuity": false,
     "roic_median_5y_pct": 10.721620665654987,
     "roic_series_pct": [
       12.321985140255345,
@@ -197,13 +198,15 @@
     "ev_to_sales": 2.847629457905007,
     "eps_used_for_trailing_pe": 0.22,
     "trailing_pe": 45.818181471391156,
+    "negative_trailing_pe_not_scored": false,
     "fcf_used_for_yield": -48563000,
     "fcf_yield_latest_pct": -2.8317598425777444,
     "discount_from_52w_high_pct": -21.064999511587335,
     "price_vs_52w_low_pct": 76.53239678396304,
+    "relative_ev_to_sales_percentile": 64.3,
     "dcf_upside_pct": -133.82936533541425,
     "customer_concentration_score": null,
-    "revenue_percentile_vs_peers": null
+    "revenue_percentile_vs_peers": 0.0
   },
   "fcf_series_by_year": {
     "2019-12-31": 34463000,
@@ -286,7 +289,7 @@
         "trailing_pe": {
           "value": 45.8182,
           "score": 2.064,
-          "weight": 0.2
+          "weight": 0.1
         },
         "price_to_sales": {
           "value": 2.6483,
@@ -306,15 +309,20 @@
         "dcf_upside_pct": {
           "value": -133.8294,
           "score": 0.0,
-          "weight": 0.25
+          "weight": 0.2
         },
         "discount_from_52w_high_pct": {
           "value": -21.065,
           "score": 4.809,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 64.3,
+          "score": 6.43,
+          "weight": 0.15
         }
       },
-      "total": 2.59,
+      "total": 3.34,
       "missing_metrics": [],
       "weights_renormalised_over": 1.0
     },
@@ -335,18 +343,22 @@
           "score": 9.098,
           "weight": 0.15
         },
+        "revenue_percentile_vs_peers": {
+          "value": 0.0,
+          "score": 1.0,
+          "weight": 0.15
+        },
         "capex_intensity_latest_pct": {
           "value": 6.9516,
           "score": 3.585,
           "weight": 0.15
         }
       },
-      "total": 5.92,
+      "total": 5.05,
       "missing_metrics": [
-        "revenue_percentile_vs_peers",
         "customer_concentration_score"
       ],
-      "weights_renormalised_over": 0.7
+      "weights_renormalised_over": 0.85
     }
   },
   "dcf": {
@@ -387,14 +399,164 @@
     "distance_dollars": -13.49
   },
   "peers": {
-    "rows": [],
+    "group": "solar",
+    "rows": [
+      {
+        "symbol": "ENPH",
+        "name": "Enphase Energy, Inc.",
+        "rationale": "Solar microinverter comp",
+        "revenue": 1211404000,
+        "revenue_annual": 1472985000,
+        "revenue_ttm": 1211404000,
+        "gross_margin_latest_pct": 46.64025770798752,
+        "gross_margin_median_5y_pct": 46.20195862904698,
+        "roic_median_5y_pct": 13.60455855329411,
+        "fcf_margin_latest_pct": -8.023774851746623,
+        "fcf_margin_median_5y_pct": 16.30540783818305,
+        "price_to_sales": 3.177376801766298,
+        "ev_to_sales": 3.3365020811941357,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 28.469999313354492,
+          "last_date": "2026-11-06",
+          "high_52w": 72.33000183105469,
+          "low_52w": 24.989999771118164,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/ENPH?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "SEDG",
+        "name": "SolarEdge Technologies, Inc.",
+        "rationale": "Solar inverter comp",
+        "revenue": 1318180000,
+        "revenue_annual": 1184444000,
+        "revenue_ttm": 1318180000,
+        "gross_margin_latest_pct": 16.57157282235378,
+        "gross_margin_median_5y_pct": 23.645771180381974,
+        "roic_median_5y_pct": 1.2629340403209086,
+        "fcf_margin_latest_pct": -0.9921110664581863,
+        "fcf_margin_median_5y_pct": -9.118024460185083,
+        "price_to_sales": 1.2866733140096143,
+        "ev_to_sales": 1.0843693797972913,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 27.510000228881836,
+          "last_date": "2026-11-06",
+          "high_52w": 78.51000213623047,
+          "low_52w": 26.200000762939453,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/SEDG?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "FSLR",
+        "name": "First Solar, Inc.",
+        "rationale": "Utility-scale solar manufacturing comp",
+        "revenue": 5014151000,
+        "revenue_annual": 5219376000,
+        "revenue_ttm": 5014151000,
+        "gross_margin_latest_pct": 40.62437732020073,
+        "gross_margin_median_5y_pct": 39.19358211680702,
+        "roic_median_5y_pct": 11.38608342684028,
+        "fcf_margin_latest_pct": 22.37828813252772,
+        "fcf_margin_median_5y_pct": -7.9923419432188325,
+        "price_to_sales": 4.320408422934195,
+        "ev_to_sales": 4.017982947514727,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 201.13999938964844,
+          "last_date": "2026-11-06",
+          "high_52w": 318.25,
+          "low_52w": 168.14999389648438,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/FSLR?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "RUN",
+        "name": "Sunrun Inc.",
+        "rationale": "Residential solar comp",
+        "revenue": 3850550000,
+        "revenue_annual": 2956997000,
+        "revenue_ttm": 3850550000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": -43.21253322955717,
+        "fcf_margin_median_5y_pct": -43.21253322955717,
+        "price_to_sales": 0.7115241652056012,
+        "ev_to_sales": 4.609085033133559,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 9.979999542236328,
+          "last_date": "2026-11-06",
+          "high_52w": 21.40999984741211,
+          "low_52w": 6.889999866485596,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/RUN?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "NXT",
+        "name": "Nextpower Inc.",
+        "rationale": "Solar tracker direct comp",
+        "revenue": 3834315000,
+        "revenue_annual": 3559390000,
+        "revenue_ttm": 3834315000,
+        "gross_margin_latest_pct": 32.5925228761108,
+        "gross_margin_median_5y_pct": 32.524028528214394,
+        "roic_median_5y_pct": 74.71103665711539,
+        "fcf_margin_latest_pct": 11.050657556491421,
+        "fcf_margin_median_5y_pct": 11.050657556491421,
+        "price_to_sales": 4.210880875407359,
+        "ev_to_sales": 3.9422837465851313,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 104.90499877929688,
+          "last_date": "2026-11-06",
+          "high_52w": 156.39999389648438,
+          "low_52w": 76.4800033569336,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/NXT?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "ARRY",
+        "name": "Array Technologies, Inc.",
+        "rationale": "Solar tracker direct comp",
+        "revenue": 1185012000,
+        "revenue_annual": 1284141000,
+        "revenue_ttm": 1185012000,
+        "gross_margin_latest_pct": 23.24923820670783,
+        "gross_margin_median_5y_pct": 23.24923820670783,
+        "roic_median_5y_pct": -1.9765236481894215,
+        "fcf_margin_latest_pct": 5.002721663742533,
+        "fcf_margin_median_5y_pct": 7.07717523660404,
+        "price_to_sales": 0.7692206306513822,
+        "ev_to_sales": 1.0752917927999512,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 5.855000019073486,
+          "last_date": "2026-11-06",
+          "high_52w": 11.960000038146973,
+          "low_52w": 3.1500000953674316,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/ARRY?range=1y&interval=1d"
+        }
+      }
+    ],
     "percentile_ranks_for_subject": {
-      "gross_margin_latest_pct": null,
-      "fcf_margin_latest_pct": null,
-      "price_to_sales": null,
-      "revenue": null
+      "gross_margin_latest_pct": 60.0,
+      "fcf_margin_latest_pct": 33.3,
+      "price_to_sales": 50.0,
+      "revenue": 0.0,
+      "gross_margin_median_5y_pct": 60.0,
+      "roic_median_5y_pct": 40.0,
+      "fcf_margin_median_5y_pct": 50.0,
+      "revenue_ttm": 0.0
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -410,7 +572,7 @@
     {
       "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
       "status": "pass",
-      "evidence": "0 US-listed EDGAR peers in config peer set"
+      "evidence": "6 US-listed EDGAR peers in config peer set"
     },
     {
       "check": "no_single_customer_dependency",
@@ -529,13 +691,22 @@
       "span_years": 4.0,
       "annual_points": 5
     },
+    "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": false,
+    "peer_group": {
+      "name": "solar",
+      "members_evaluated": 6,
+      "members_with_ev_to_sales": 7,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 64.3,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [],
     "missing_value_metrics": [],
     "missing_moat_metrics": [
-      "revenue_percentile_vs_peers",
       "customer_concentration_score"
     ],
     "peak_cycle_warning": false,
@@ -543,7 +714,7 @@
   },
   "explanations": {
     "business": "Business score is 5.63/10, driven mainly by leverage debt to revenue ttm scored 9.155/10 (value 0.2112) and gross margin stdev 5y pts scored 9.098/10 (value 2.2561). The main drags were dilution share count growth pct scored 0.588/10 (value 14.1216) and net cash to revenue scored 2.507/10 (value -0.1993). Debt-to-TTM-revenue leverage scored 9.155/10 (value 0.2112) and Interest coverage scored 5.241/10 (value 3.2409). Diluted share count changed +14.1216%/yr over 4.0 years, scored 0.588/10; FCF is SBC-adjusted owner FCF (stock comp was 2.1% of revenue in the latest year).",
-    "value": "Value score is 2.59/10, driven mainly by price to sales scored 6.852/10 (value 2.6483) and ev to sales scored 6.652/10 (value 2.8476). The main drags were dcf upside pct scored 0.0/10 (value -133.8294) and fcf yield latest pct scored 0.0/10 (value -2.8318). The DCF fair value is $-3.41 vs the current $10.08 (-133.8%).",
-    "moat": "Moat score is 5.92/10, driven mainly by gross margin stdev 5y pts scored 9.098/10 (value 2.2561) and roic median 5y pct scored 5.972/10 (value 10.7216). The main drags were capex intensity latest pct scored 3.585/10 (value 6.9516) and gross margin median 5y pct scored 5.243/10 (value 35.5747)."
+    "value": "Value score is 3.34/10, driven mainly by price to sales scored 6.852/10 (value 2.6483) and ev to sales scored 6.652/10 (value 2.8476). The main drags were dcf upside pct scored 0.0/10 (value -133.8294) and fcf yield latest pct scored 0.0/10 (value -2.8318). The DCF fair value is $-3.41 vs the current $10.08 (-133.8%).",
+    "moat": "Moat score is 5.05/10, driven mainly by gross margin stdev 5y pts scored 9.098/10 (value 2.2561) and roic median 5y pct scored 5.972/10 (value 10.7216). The main drags were revenue percentile vs peers scored 1.0/10 (value 0.0) and capex intensity latest pct scored 3.585/10 (value 6.9516)."
   }
 }

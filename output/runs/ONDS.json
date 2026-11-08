@@ -158,20 +158,24 @@
     "fcf_margin_latest_pct": -111.9552147602058,
     "cash_latest": 657906000,
     "investments_latest": null,
-    "total_debt_latest": 300000,
+    "total_debt_latest": 1800000,
     "total_debt_resolution": {
-      "value": 300000,
-      "as_of": "2024-12-31",
-      "method": "single_total:LongTermDebt",
+      "value": 1800000,
+      "as_of": "2025-09-30",
+      "method": "current_plus_noncurrent_pair",
       "components": {
-        "concept": "LongTermDebt"
+        "family": "notes_payable",
+        "current_concept": "NotesPayableCurrent",
+        "current_value": 1500000,
+        "noncurrent_concept": "LongTermNotesPayable",
+        "noncurrent_value": 300000
       }
     },
     "debt_not_determinable_fail_closed": false,
     "balance_as_of": "2026-06-30",
-    "net_cash_latest": 657606000,
-    "net_cash_to_revenue": 3.777108952746363,
-    "leverage_debt_to_revenue_ttm": 0.0017231179244470228,
+    "net_cash_latest": 656106000,
+    "net_cash_to_revenue": 3.7684933631241275,
+    "leverage_debt_to_revenue_ttm": 0.010338707546682136,
     "interest_coverage_ttm": -337.520780748604,
     "interest_coverage_missing_reason": null,
     "capex_latest": 2034000,
@@ -193,16 +197,18 @@
     "multiples_basis": "ttm",
     "market_cap": 2686668674.2105484,
     "price_to_sales": 15.431489831941715,
-    "ev_to_sales": 11.654380879195353,
+    "ev_to_sales": 11.662996468817587,
     "eps_used_for_trailing_pe": -0.03,
-    "trailing_pe": -177.8333346048991,
+    "trailing_pe": null,
+    "negative_trailing_pe_not_scored": true,
     "fcf_used_for_yield": -272940000,
     "fcf_yield_latest_pct": -10.159049480866887,
     "discount_from_52w_high_pct": -61.920057451899346,
     "price_vs_52w_low_pct": 18.03097479335387,
-    "dcf_upside_pct": -55645.64158970983,
+    "relative_ev_to_sales_percentile": 10.0,
+    "dcf_upside_pct": -55668.88432618843,
     "customer_concentration_score": 0,
-    "revenue_percentile_vs_peers": null
+    "revenue_percentile_vs_peers": 50.0
   },
   "fcf_series_by_year": {
     "2019-12-31": -15680373,
@@ -252,7 +258,7 @@
           "weight": 0.15
         },
         "net_cash_to_revenue": {
-          "value": 3.7771,
+          "value": 3.7685,
           "score": 10.0,
           "weight": 0.1
         },
@@ -262,8 +268,8 @@
           "weight": 0.1
         },
         "leverage_debt_to_revenue_ttm": {
-          "value": 0.0017,
-          "score": 9.993,
+          "value": 0.0103,
+          "score": 9.959,
           "weight": 0.075
         },
         "interest_coverage_ttm": {
@@ -280,19 +286,14 @@
     },
     "value": {
       "subscores": {
-        "trailing_pe": {
-          "value": -177.8333,
-          "score": 10.0,
-          "weight": 0.2
-        },
         "price_to_sales": {
           "value": 15.4315,
           "score": 0.5,
           "weight": 0.15
         },
         "ev_to_sales": {
-          "value": 11.6544,
-          "score": 1.504,
+          "value": 11.663,
+          "score": 1.501,
           "weight": 0.1
         },
         "fcf_yield_latest_pct": {
@@ -301,19 +302,26 @@
           "weight": 0.2
         },
         "dcf_upside_pct": {
-          "value": -55645.6416,
+          "value": -55668.8843,
           "score": 0.0,
-          "weight": 0.25
+          "weight": 0.2
         },
         "discount_from_52w_high_pct": {
           "value": -61.9201,
           "score": 9.0,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 10.0,
+          "score": 1.0,
+          "weight": 0.15
         }
       },
-      "total": 3.13,
-      "missing_metrics": [],
-      "weights_renormalised_over": 1.0
+      "total": 1.42,
+      "missing_metrics": [
+        "trailing_pe"
+      ],
+      "weights_renormalised_over": 0.9
     },
     "moat": {
       "subscores": {
@@ -327,6 +335,11 @@
           "score": 4.517,
           "weight": 0.15
         },
+        "revenue_percentile_vs_peers": {
+          "value": 50.0,
+          "score": 5.5,
+          "weight": 0.15
+        },
         "customer_concentration_score": {
           "value": 0.0,
           "score": 0.0,
@@ -338,12 +351,11 @@
           "weight": 0.15
         }
       },
-      "total": 3.43,
+      "total": 3.82,
       "missing_metrics": [
-        "roic_median_5y_pct",
-        "revenue_percentile_vs_peers"
+        "roic_median_5y_pct"
       ],
-      "weights_renormalised_over": 0.65
+      "weights_renormalised_over": 0.8
     }
   },
   "dcf": {
@@ -358,9 +370,9 @@
     "wacc": {
       "cost_of_equity_pct": 15.556,
       "cost_of_debt_after_tax_pct": 3.825,
-      "equity_weight": 0.9999,
-      "debt_weight": 0.0001,
-      "wacc_pct": 15.555,
+      "equity_weight": 0.9993,
+      "debt_weight": 0.0007,
+      "wacc_pct": 15.549,
       "inputs": {
         "risk_free_rate_pct": 4.3,
         "equity_risk_premium_pct": 5.0,
@@ -369,9 +381,9 @@
         "tax_rate_pct": 15.0
       }
     },
-    "fair_value_per_share": -2963.36,
-    "pv_of_projected_fcf": -1371.25,
-    "pv_of_terminal_value": -1592.11,
+    "fair_value_per_share": -2964.6,
+    "pv_of_projected_fcf": -1371.45,
+    "pv_of_terminal_value": -1593.14,
     "projected_fcf_per_share": [
       -320.1304,
       -384.1565,
@@ -380,18 +392,120 @@
       -510.2559
     ],
     "current_price": 5.335000038146973,
-    "upside_pct": -55645.64,
-    "distance_dollars": -2968.7
+    "upside_pct": -55668.88,
+    "distance_dollars": -2969.94
   },
   "peers": {
-    "rows": [],
+    "group": "drones_defense",
+    "rows": [
+      {
+        "symbol": "AVAV",
+        "name": "AeroVironment Inc",
+        "rationale": "Unmanned aerial systems incumbent comp",
+        "revenue": 2002659000,
+        "revenue_annual": 1976845000,
+        "revenue_ttm": 2002659000,
+        "gross_margin_latest_pct": 25.32530370362876,
+        "gross_margin_median_5y_pct": 38.8283592911274,
+        "roic_median_5y_pct": -1.1660201071679306,
+        "fcf_margin_latest_pct": -9.069097476028723,
+        "fcf_margin_median_5y_pct": -5.1577635149708705,
+        "price_to_sales": 2.8052683550382493,
+        "ev_to_sales": 3.0146844363581344,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 112.76000213623047,
+          "last_date": "2026-11-06",
+          "high_52w": 392.8599853515625,
+          "low_52w": 102.08000183105469,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/AVAV?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "KTOS",
+        "name": "Kratos Defense & Security Solutions, Inc.",
+        "rationale": "Unmanned systems / defense comp",
+        "revenue": 1646700000,
+        "revenue_annual": 1346800000,
+        "revenue_ttm": 1646700000,
+        "gross_margin_latest_pct": 22.86159786159786,
+        "gross_margin_median_5y_pct": 25.27501540086245,
+        "roic_median_5y_pct": 2.039043758788982,
+        "fcf_margin_latest_pct": -12.837837837837837,
+        "fcf_margin_median_5y_pct": -7.106645818097017,
+        "price_to_sales": 4.024339413320011,
+        "ev_to_sales": 3.2838888151539822,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 35.099998474121094,
+          "last_date": "2026-11-06",
+          "high_52w": 130.72000122070312,
+          "low_52w": 33.38999938964844,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/KTOS?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "RCAT",
+        "name": "Red Cat Holdings, Inc.",
+        "rationale": "Small drone pure-play comp",
+        "revenue": 71541000,
+        "revenue_annual": 40729000,
+        "revenue_ttm": 71541000,
+        "gross_margin_latest_pct": 3.127992339610597,
+        "gross_margin_median_5y_pct": 3.127992339610597,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": null,
+        "fcf_margin_median_5y_pct": null,
+        "price_to_sales": 7.730217844007453,
+        "ev_to_sales": 6.818480784139685,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 4.039999961853027,
+          "last_date": "2026-11-06",
+          "high_52w": 17.360000610351562,
+          "low_52w": 3.4049999713897705,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/RCAT?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "UAVS",
+        "name": "AgEagle Aerial Systems Inc.",
+        "rationale": "Drone / UAS pure-play comp",
+        "revenue": 13147740,
+        "revenue_annual": 13392777,
+        "revenue_ttm": 13147740,
+        "gross_margin_latest_pct": 46.95542978129181,
+        "gross_margin_median_5y_pct": 43.604804121565195,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": -50.0438631958107,
+        "fcf_margin_median_5y_pct": -123.05486549084353,
+        "price_to_sales": 1.4494427098531895,
+        "ev_to_sales": 1.1935591891872803,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 0.3199999928474426,
+          "last_date": "2026-11-06",
+          "high_52w": 1.7599999904632568,
+          "low_52w": 0.3100000023841858,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/UAVS?range=1y&interval=1d"
+        }
+      }
+    ],
     "percentile_ranks_for_subject": {
-      "gross_margin_latest_pct": null,
-      "fcf_margin_latest_pct": null,
-      "price_to_sales": null,
-      "revenue": null
+      "gross_margin_latest_pct": 75.0,
+      "fcf_margin_latest_pct": 0.0,
+      "price_to_sales": 100.0,
+      "revenue": 50.0,
+      "gross_margin_median_5y_pct": 75.0,
+      "roic_median_5y_pct": null,
+      "fcf_margin_median_5y_pct": 0.0,
+      "revenue_ttm": 50.0
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -407,7 +521,7 @@
     {
       "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
       "status": "pass",
-      "evidence": "0 US-listed EDGAR peers in config peer set"
+      "evidence": "4 US-listed EDGAR peers in config peer set"
     },
     {
       "check": "no_single_customer_dependency",
@@ -512,11 +626,15 @@
     "beta": "config input - computed 2026-11-06 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 105 weekly return points",
     "beta_missing": false,
     "total_debt_resolution": {
-      "value": 300000,
-      "as_of": "2024-12-31",
-      "method": "single_total:LongTermDebt",
+      "value": 1800000,
+      "as_of": "2025-09-30",
+      "method": "current_plus_noncurrent_pair",
       "components": {
-        "concept": "LongTermDebt"
+        "family": "notes_payable",
+        "current_concept": "NotesPayableCurrent",
+        "current_value": 1500000,
+        "noncurrent_concept": "LongTermNotesPayable",
+        "noncurrent_value": 300000
       }
     },
     "debt_not_determinable_fail_closed": false,
@@ -533,22 +651,32 @@
     },
     "dilution_share_series_discontinuity": true,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": true,
+    "peer_group": {
+      "name": "drones_defense",
+      "members_evaluated": 4,
+      "members_with_ev_to_sales": 5,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 10.0,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [
       "dilution_share_count_growth_pct"
     ],
-    "missing_value_metrics": [],
+    "missing_value_metrics": [
+      "trailing_pe"
+    ],
     "missing_moat_metrics": [
-      "roic_median_5y_pct",
-      "revenue_percentile_vs_peers"
+      "roic_median_5y_pct"
     ],
     "peak_cycle_warning": false,
     "switching_costs": "not_evaluated_v1"
   },
   "explanations": {
-    "business": "Business score is 4.81/10, driven mainly by revenue growth latest pct scored 10.0/10 (value 605.2829) and revenue cagr 5y pct scored 10.0/10 (value 87.938). The main drags were interest coverage ttm scored 0.0/10 (value -337.5208) and fcf margin median 5y pct scored 0.0/10 (value -505.6305). Debt-to-TTM-revenue leverage scored 9.993/10 (value 0.0017) and Interest coverage scored 0.0/10 (value -337.5208). FCF is SBC-adjusted owner FCF (stock comp was 31.6% of revenue in the latest year).",
-    "value": "Value score is 3.13/10, driven mainly by trailing pe scored 10.0/10 (value -177.8333) and discount from 52w high pct scored 9.0/10 (value -61.9201). The main drags were dcf upside pct scored 0.0/10 (value -55645.6416) and fcf yield latest pct scored 0.0/10 (value -10.159). The DCF fair value is $-2,963.36 vs the current $5.34 (-55645.6%).",
-    "moat": "Moat score is 3.43/10, driven mainly by gross margin median 5y pct scored 5.797/10 (value 39.7311) and gross margin stdev 5y pts scored 4.517/10 (value 15.9314). The main drags were customer concentration score scored 0.0/10 (value 0.0) and capex intensity latest pct scored 2.604/10 (value 4.0094)."
+    "business": "Business score is 4.81/10, driven mainly by revenue growth latest pct scored 10.0/10 (value 605.2829) and revenue cagr 5y pct scored 10.0/10 (value 87.938). The main drags were interest coverage ttm scored 0.0/10 (value -337.5208) and fcf margin median 5y pct scored 0.0/10 (value -505.6305). Debt-to-TTM-revenue leverage scored 9.959/10 (value 0.0103) and Interest coverage scored 0.0/10 (value -337.5208). FCF is SBC-adjusted owner FCF (stock comp was 31.6% of revenue in the latest year).",
+    "value": "Value score is 1.42/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -61.9201) and ev to sales scored 1.501/10 (value 11.663). The main drags were dcf upside pct scored 0.0/10 (value -55668.8843) and fcf yield latest pct scored 0.0/10 (value -10.159). The DCF fair value is $-2,964.60 vs the current $5.34 (-55668.9%).",
+    "moat": "Moat score is 3.82/10, driven mainly by gross margin median 5y pct scored 5.797/10 (value 39.7311) and revenue percentile vs peers scored 5.5/10 (value 50.0). The main drags were customer concentration score scored 0.0/10 (value 0.0) and capex intensity latest pct scored 2.604/10 (value 4.0094)."
   }
 }

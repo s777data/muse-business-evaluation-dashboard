@@ -194,6 +194,7 @@
     "dilution_share_count_growth_pct": -0.7252996853657767,
     "dilution_span_years": 5.0,
     "dilution_annual_points": 6,
+    "dilution_share_series_discontinuity": false,
     "roic_median_5y_pct": 14.70787451671316,
     "roic_series_pct": [
       17.06051310249027,
@@ -217,13 +218,15 @@
     "ev_to_sales": 6.148684733369975,
     "eps_used_for_trailing_pe": 6.380000000000001,
     "trailing_pe": 18.19749192384343,
+    "negative_trailing_pe_not_scored": false,
     "fcf_used_for_yield": -33534000000,
     "fcf_yield_latest_pct": -9.62790710328183,
     "discount_from_52w_high_pct": -53.21378145084616,
     "price_vs_52w_low_pct": 0.9653018792700641,
+    "relative_ev_to_sales_percentile": 50.0,
     "dcf_upside_pct": -201.171405291777,
     "customer_concentration_score": 4.0,
-    "revenue_percentile_vs_peers": null
+    "revenue_percentile_vs_peers": 50.0
   },
   "fcf_series_by_year": {
     "2010-05-31": 8015000000,
@@ -319,7 +322,7 @@
         "trailing_pe": {
           "value": 18.1975,
           "score": 5.861,
-          "weight": 0.2
+          "weight": 0.1
         },
         "price_to_sales": {
           "value": 4.8526,
@@ -339,15 +342,20 @@
         "dcf_upside_pct": {
           "value": -201.1714,
           "score": 0.0,
-          "weight": 0.25
+          "weight": 0.2
         },
         "discount_from_52w_high_pct": {
           "value": -53.2138,
           "score": 8.321,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 50.0,
+          "score": 5.0,
+          "weight": 0.15
         }
       },
-      "total": 3.15,
+      "total": 3.31,
       "missing_metrics": [],
       "weights_renormalised_over": 1.0
     },
@@ -363,6 +371,11 @@
           "score": 8.629,
           "weight": 0.2
         },
+        "revenue_percentile_vs_peers": {
+          "value": 50.0,
+          "score": 5.5,
+          "weight": 0.15
+        },
         "customer_concentration_score": {
           "value": 4.0,
           "score": 4.0,
@@ -374,12 +387,11 @@
           "weight": 0.15
         }
       },
-      "total": 7.58,
+      "total": 7.21,
       "missing_metrics": [
-        "gross_margin_stdev_5y_pts",
-        "revenue_percentile_vs_peers"
+        "gross_margin_stdev_5y_pts"
       ],
-      "weights_renormalised_over": 0.7
+      "weights_renormalised_over": 0.85
     }
   },
   "dcf": {
@@ -420,14 +432,164 @@
     "distance_dollars": -233.56
   },
   "peers": {
-    "rows": [],
+    "group": "enterprise_software",
+    "rows": [
+      {
+        "symbol": "MSFT",
+        "name": "Microsoft Corp",
+        "rationale": "Cloud + database platform comp",
+        "revenue": 346445000000,
+        "revenue_annual": 331839000000,
+        "revenue_ttm": 346445000000,
+        "gross_margin_latest_pct": 67.94409337058032,
+        "gross_margin_median_5y_pct": 68.8237423861652,
+        "roic_median_5y_pct": 30.86373484901272,
+        "fcf_margin_latest_pct": 16.44833789880032,
+        "fcf_margin_median_5y_pct": 23.53018899086898,
+        "price_to_sales": 11.404182340422677,
+        "ev_to_sales": 11.464763385032933,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 530.6099853515625,
+          "last_date": "2026-11-06",
+          "high_52w": 555.7999877929688,
+          "low_52w": 352.8299865722656,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/MSFT?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "AMZN",
+        "name": "Amazon.com, Inc.",
+        "rationale": "AWS cloud / database comp",
+        "revenue": 797455000000,
+        "revenue_annual": 716924000000,
+        "revenue_ttm": 797455000000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": 16.768664147064808,
+        "fcf_margin_latest_pct": -1.6420150531995021,
+        "fcf_margin_median_5y_pct": -1.6420150531995021,
+        "price_to_sales": 3.553667061576334,
+        "ev_to_sales": 3.7008126685384823,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 259.29998779296875,
+          "last_date": "2026-11-06",
+          "high_52w": 284.0199890136719,
+          "low_52w": 198.7899932861328,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/AMZN?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "GOOGL",
+        "name": "Alphabet Inc.",
+        "rationale": "Google Cloud platform comp",
+        "revenue": 471098000000,
+        "revenue_annual": 402836000000,
+        "revenue_ttm": 471098000000,
+        "gross_margin_latest_pct": 59.65231508603998,
+        "gross_margin_median_5y_pct": 56.93980290098084,
+        "roic_median_5y_pct": 27.877290887045284,
+        "fcf_margin_latest_pct": 11.993218083785957,
+        "fcf_margin_median_5y_pct": 15.301209522632192,
+        "price_to_sales": 7.476489021185282,
+        "ev_to_sales": 7.627521290479568,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 284.7799987792969,
+          "last_date": "2026-11-06",
+          "high_52w": 402.6199951171875,
+          "low_52w": 273.5,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/GOOGL?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "CRM",
+        "name": "Salesforce, Inc.",
+        "rationale": "Enterprise SaaS comp",
+        "revenue": 43938000000,
+        "revenue_annual": 41525000000,
+        "revenue_ttm": 43938000000,
+        "gross_margin_latest_pct": 77.67609873570139,
+        "gross_margin_median_5y_pct": 75.49703072553577,
+        "roic_median_5y_pct": 7.7510372688892115,
+        "fcf_margin_latest_pct": 26.232390126429863,
+        "fcf_margin_median_5y_pct": 19.252947757982614,
+        "price_to_sales": 3.9921399469482832,
+        "ev_to_sales": 4.619084209317986,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 213.64999389648438,
+          "last_date": "2026-11-06",
+          "high_52w": 266.2300109863281,
+          "low_52w": 150.1199951171875,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/CRM?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "NOW",
+        "name": "ServiceNow, Inc.",
+        "rationale": "Enterprise SaaS comp",
+        "revenue": 15431000000,
+        "revenue_annual": 13278000000,
+        "revenue_ttm": 15431000000,
+        "gross_margin_latest_pct": 77.534267208917,
+        "gross_margin_median_5y_pct": 78.28847481021394,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": 19.73941858713662,
+        "fcf_margin_median_5y_pct": 12.261732248355813,
+        "price_to_sales": 6.892348709947948,
+        "ev_to_sales": 6.793651282691127,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 101.97000122070312,
+          "last_date": "2026-11-06",
+          "high_52w": 173.4980010986328,
+          "low_52w": 83.0,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/NOW?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "ADBE",
+        "name": "Adobe Inc.",
+        "rationale": "Enterprise software comp",
+        "revenue": 25970000000,
+        "revenue_annual": 23769000000,
+        "revenue_ttm": 25970000000,
+        "gross_margin_latest_pct": 89.26753334174765,
+        "gross_margin_median_5y_pct": 88.18498574596136,
+        "roic_median_5y_pct": 43.39065018807093,
+        "fcf_margin_latest_pct": 33.27864024569818,
+        "fcf_margin_median_5y_pct": 33.27864024569818,
+        "price_to_sales": 3.644326192028118,
+        "ev_to_sales": 3.6599981211771357,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 239.3000030517578,
+          "last_date": "2026-11-06",
+          "high_52w": 357.5299987792969,
+          "low_52w": 193.41000366210938,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/ADBE?range=1y&interval=1d"
+        }
+      }
+    ],
     "percentile_ranks_for_subject": {
-      "gross_margin_latest_pct": null,
-      "fcf_margin_latest_pct": null,
-      "price_to_sales": null,
-      "revenue": null
+      "gross_margin_latest_pct": 20.0,
+      "fcf_margin_latest_pct": 0.0,
+      "price_to_sales": 50.0,
+      "revenue": 50.0,
+      "gross_margin_median_5y_pct": 20.0,
+      "roic_median_5y_pct": 20.0,
+      "fcf_margin_median_5y_pct": 16.7,
+      "revenue_ttm": 50.0
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -443,7 +605,7 @@
     {
       "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
       "status": "pass",
-      "evidence": "0 US-listed EDGAR peers in config peer set"
+      "evidence": "6 US-listed EDGAR peers in config peer set"
     },
     {
       "check": "no_single_customer_dependency",
@@ -567,23 +729,32 @@
       "span_years": 5.0,
       "annual_points": 6
     },
+    "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": false,
+    "peer_group": {
+      "name": "enterprise_software",
+      "members_evaluated": 6,
+      "members_with_ev_to_sales": 7,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 50.0,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [
       "gross_margin_stdev_5y_pts"
     ],
     "missing_value_metrics": [],
     "missing_moat_metrics": [
-      "gross_margin_stdev_5y_pts",
-      "revenue_percentile_vs_peers"
+      "gross_margin_stdev_5y_pts"
     ],
     "peak_cycle_warning": false,
     "switching_costs": "not_evaluated_v1"
   },
   "explanations": {
     "business": "Business score is 5.78/10, driven mainly by dilution share count growth pct scored 8.863/10 (value -0.7253) and gross margin median 5y pct scored 8.629/10 (value 61.2866). The main drags were net cash to revenue scored 0.0/10 (value -1.2961) and fcf margin median 5y pct scored 4.207/10 (value 5.6904). Debt-to-TTM-revenue leverage scored 4.375/10 (value 1.8127) and Interest coverage scored 6.259/10 (value 4.5174). Diluted share count changed -0.7253%/yr over 5.0 years, scored 8.863/10; FCF is SBC-adjusted owner FCF (stock comp was 7.1% of revenue in the latest year).",
-    "value": "Value score is 3.15/10, driven mainly by discount from 52w high pct scored 8.321/10 (value -53.2138) and trailing pe scored 5.861/10 (value 18.1975). The main drags were dcf upside pct scored 0.0/10 (value -201.1714) and fcf yield latest pct scored 0.0/10 (value -9.6279). The DCF fair value is $-117.46 vs the current $116.10 (-201.2%).",
-    "moat": "Moat score is 7.58/10, driven mainly by capex intensity latest pct scored 10.0/10 (value 82.6388) and gross margin median 5y pct scored 8.629/10 (value 61.2866). The main drags were customer concentration score scored 4.0/10 (value 4.0) and roic median 5y pct scored 7.396/10 (value 14.7079)."
+    "value": "Value score is 3.31/10, driven mainly by discount from 52w high pct scored 8.321/10 (value -53.2138) and trailing pe scored 5.861/10 (value 18.1975). The main drags were dcf upside pct scored 0.0/10 (value -201.1714) and fcf yield latest pct scored 0.0/10 (value -9.6279). The DCF fair value is $-117.46 vs the current $116.10 (-201.2%).",
+    "moat": "Moat score is 7.21/10, driven mainly by capex intensity latest pct scored 10.0/10 (value 82.6388) and gross margin median 5y pct scored 8.629/10 (value 61.2866). The main drags were customer concentration score scored 4.0/10 (value 4.0) and revenue percentile vs peers scored 5.5/10 (value 50.0)."
   }
 }
