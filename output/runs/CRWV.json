@@ -175,6 +175,7 @@
     "dilution_share_count_growth_pct": 50.650582728331074,
     "dilution_span_years": 2.0,
     "dilution_annual_points": 3,
+    "dilution_share_series_discontinuity": false,
     "roic_median_5y_pct": 2.12104332565393,
     "roic_series_pct": [
       4.4212554182051695,
@@ -187,14 +188,16 @@
     "price_to_sales": 3.368432258334556,
     "ev_to_sales": 7.324558740547994,
     "eps_used_for_trailing_pe": -3.55,
-    "trailing_pe": -13.070422965036313,
+    "trailing_pe": null,
+    "negative_trailing_pe_not_scored": true,
     "fcf_used_for_yield": -14274000000,
     "fcf_yield_latest_pct": -55.83108897066048,
     "discount_from_52w_high_pct": -66.37193581488272,
     "price_vs_52w_low_pct": 6.2757711590537335,
+    "relative_ev_to_sales_percentile": 91.7,
     "dcf_upside_pct": -1009.7629011166374,
     "customer_concentration_score": null,
-    "revenue_percentile_vs_peers": null
+    "revenue_percentile_vs_peers": 100.0
   },
   "fcf_series_by_year": {
     "2023-12-31": -1125000000,
@@ -266,11 +269,6 @@
     },
     "value": {
       "subscores": {
-        "trailing_pe": {
-          "value": -13.0704,
-          "score": 10.0,
-          "weight": 0.2
-        },
         "price_to_sales": {
           "value": 3.3684,
           "score": 6.132,
@@ -289,17 +287,24 @@
         "dcf_upside_pct": {
           "value": -1009.7629,
           "score": 0.0,
-          "weight": 0.25
+          "weight": 0.2
         },
         "discount_from_52w_high_pct": {
           "value": -66.3719,
           "score": 9.0,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 91.7,
+          "score": 9.17,
+          "weight": 0.15
         }
       },
-      "total": 4.15,
-      "missing_metrics": [],
-      "weights_renormalised_over": 1.0
+      "total": 3.92,
+      "missing_metrics": [
+        "trailing_pe"
+      ],
+      "weights_renormalised_over": 0.9
     },
     "moat": {
       "subscores": {
@@ -318,18 +323,22 @@
           "score": 9.28,
           "weight": 0.15
         },
+        "revenue_percentile_vs_peers": {
+          "value": 100.0,
+          "score": 10.0,
+          "weight": 0.15
+        },
         "capex_intensity_latest_pct": {
           "value": 200.916,
           "score": 10.0,
           "weight": 0.15
         }
       },
-      "total": 7.8,
+      "total": 8.19,
       "missing_metrics": [
-        "revenue_percentile_vs_peers",
         "customer_concentration_score"
       ],
-      "weights_renormalised_over": 0.7
+      "weights_renormalised_over": 0.85
     }
   },
   "dcf": {
@@ -370,14 +379,140 @@
     "distance_dollars": -468.53
   },
   "peers": {
-    "rows": [],
+    "group": "ai_infra",
+    "rows": [
+      {
+        "symbol": "APLD",
+        "name": "Applied Digital Corp.",
+        "rationale": "AI data-center builder / GPU cloud comp",
+        "revenue": 872252000,
+        "revenue_annual": 611311000,
+        "revenue_ttm": 872252000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": -43.69708002263167,
+        "fcf_margin_latest_pct": -490.1294103983079,
+        "fcf_margin_median_5y_pct": -358.62649790654024,
+        "price_to_sales": 5.197719254882995,
+        "ev_to_sales": 9.126266280283911,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 15.550000190734863,
+          "last_date": "2026-11-06",
+          "high_52w": 49.650001525878906,
+          "low_52w": 14.170000076293945,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/APLD?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "CORZ",
+        "name": "Core Scientific, Inc./tx",
+        "rationale": "Miner pivoting to AI hosting; large hosting contracts comp",
+        "revenue": 592074000,
+        "revenue_annual": 319019000,
+        "revenue_ttm": 592074000,
+        "gross_margin_latest_pct": 11.879543224698216,
+        "gross_margin_median_5y_pct": 23.707976940188612,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": -172.0856751478752,
+        "fcf_margin_median_5y_pct": -20.363168530876962,
+        "price_to_sales": 9.315576545071991,
+        "ev_to_sales": 15.363906652457217,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 11.760000228881836,
+          "last_date": "2026-11-06",
+          "high_52w": 29.15999984741211,
+          "low_52w": 11.380000114440918,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/CORZ?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "WULF",
+        "name": "TeraWulf Inc.",
+        "rationale": "Miner pivoting to AI/HPC hosting comp",
+        "revenue": 190845000,
+        "revenue_annual": 168455000,
+        "revenue_ttm": 190845000,
+        "gross_margin_latest_pct": 39.20631622688552,
+        "gross_margin_median_5y_pct": 49.83470307245218,
+        "roic_median_5y_pct": -8.576933234100785,
+        "fcf_margin_latest_pct": -732.7048766732955,
+        "fcf_margin_median_5y_pct": -230.83662380132952,
+        "price_to_sales": 34.17385104281442,
+        "ev_to_sales": 42.04217874330435,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 11.369999885559082,
+          "last_date": "2026-11-06",
+          "high_52w": 28.979999542236328,
+          "low_52w": 10.079999923706055,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/WULF?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "HUT",
+        "name": "Hut 8 Corp.",
+        "rationale": "Power / AI infrastructure comp",
+        "revenue": 305514000,
+        "revenue_annual": 235118000,
+        "revenue_ttm": 305514000,
+        "gross_margin_latest_pct": 54.161740062436735,
+        "gross_margin_median_5y_pct": 50.84425854144232,
+        "roic_median_5y_pct": 1.2355698572069493,
+        "fcf_margin_latest_pct": null,
+        "fcf_margin_median_5y_pct": null,
+        "price_to_sales": 23.093348205073276,
+        "ev_to_sales": 47.86977416263987,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 52.650001525878906,
+          "last_date": "2026-11-06",
+          "high_52w": 133.02000427246094,
+          "low_52w": 33.7599983215332,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/HUT?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "CIFR",
+        "name": "Cipher Digital Inc.",
+        "rationale": "Miner pivoting to HPC hosting comp",
+        "revenue": 146087000,
+        "revenue_annual": 223942000,
+        "revenue_ttm": 146087000,
+        "gross_margin_latest_pct": 63.73346670119942,
+        "gross_margin_median_5y_pct": 62.03536834531754,
+        "roic_median_5y_pct": -10.592749082704952,
+        "fcf_margin_latest_pct": -334.3035250198712,
+        "fcf_margin_median_5y_pct": -256.111238942804,
+        "price_to_sales": 19.69920258158489,
+        "ev_to_sales": 56.39174195880531,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 6.545000076293945,
+          "last_date": "2026-11-06",
+          "high_52w": 29.18000030517578,
+          "low_52w": 5.550000190734863,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/CIFR?range=1y&interval=1d"
+        }
+      }
+    ],
     "percentile_ranks_for_subject": {
-      "gross_margin_latest_pct": null,
-      "fcf_margin_latest_pct": null,
-      "price_to_sales": null,
-      "revenue": null
+      "gross_margin_latest_pct": 100.0,
+      "fcf_margin_latest_pct": 100.0,
+      "price_to_sales": 0.0,
+      "revenue": 100.0,
+      "gross_margin_median_5y_pct": 100.0,
+      "roic_median_5y_pct": 100.0,
+      "fcf_margin_median_5y_pct": 25.0,
+      "revenue_ttm": 100.0
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -393,7 +528,7 @@
     {
       "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
       "status": "pass",
-      "evidence": "0 US-listed EDGAR peers in config peer set"
+      "evidence": "5 US-listed EDGAR peers in config peer set"
     },
     {
       "check": "no_single_customer_dependency",
@@ -512,13 +647,24 @@
       "span_years": 2.0,
       "annual_points": 3
     },
+    "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": true,
+    "peer_group": {
+      "name": "ai_infra",
+      "members_evaluated": 5,
+      "members_with_ev_to_sales": 6,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 91.7,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [],
-    "missing_value_metrics": [],
+    "missing_value_metrics": [
+      "trailing_pe"
+    ],
     "missing_moat_metrics": [
-      "revenue_percentile_vs_peers",
       "customer_concentration_score"
     ],
     "peak_cycle_warning": false,
@@ -526,7 +672,7 @@
   },
   "explanations": {
     "business": "Business score is 4.31/10, driven mainly by revenue growth latest pct scored 10.0/10 (value 167.9373) and revenue cagr 5y pct scored 10.0/10 (value 373.351). The main drags were interest coverage ttm scored 0.0/10 (value -0.1427) and dilution share count growth pct scored 0.0/10 (value 50.6506). Debt-to-TTM-revenue leverage scored 0.316/10 (value 4.6839) and Interest coverage scored 0.0/10 (value -0.1427). Diluted share count changed +50.6506%/yr over 2.0 years, scored 0.0/10; FCF is SBC-adjusted owner FCF (stock comp was 12.3% of revenue in the latest year).",
-    "value": "Value score is 4.15/10, driven mainly by trailing pe scored 10.0/10 (value -13.0704) and discount from 52w high pct scored 9.0/10 (value -66.3719). The main drags were dcf upside pct scored 0.0/10 (value -1009.7629) and fcf yield latest pct scored 0.0/10 (value -55.8311). The DCF fair value is $-422.13 vs the current $46.40 (-1009.8%).",
-    "moat": "Moat score is 7.8/10, driven mainly by capex intensity latest pct scored 10.0/10 (value 200.916) and gross margin median 5y pct scored 9.668/10 (value 71.6819). The main drags were roic median 5y pct scored 3.163/10 (value 2.121) and gross margin stdev 5y pts scored 9.28/10 (value 1.7999)."
+    "value": "Value score is 3.92/10, driven mainly by relative ev to sales percentile scored 9.17/10 (value 91.7) and discount from 52w high pct scored 9.0/10 (value -66.3719). The main drags were dcf upside pct scored 0.0/10 (value -1009.7629) and fcf yield latest pct scored 0.0/10 (value -55.8311). The DCF fair value is $-422.13 vs the current $46.40 (-1009.8%).",
+    "moat": "Moat score is 8.19/10, driven mainly by revenue percentile vs peers scored 10.0/10 (value 100.0) and capex intensity latest pct scored 10.0/10 (value 200.916). The main drags were roic median 5y pct scored 3.163/10 (value 2.121) and gross margin stdev 5y pts scored 9.28/10 (value 1.7999)."
   }
 }

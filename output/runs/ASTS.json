@@ -148,6 +148,7 @@
       "as_of": "2026-06-30",
       "method": "current_plus_noncurrent_pair",
       "components": {
+        "family": "bank_debt",
         "current_concept": "LongTermDebtCurrent",
         "current_value": 8494000,
         "noncurrent_concept": "LongTermDebtNoncurrent",
@@ -172,6 +173,7 @@
     "dilution_share_count_growth_pct": 76.80524240245308,
     "dilution_span_years": 2.0,
     "dilution_annual_points": 3,
+    "dilution_share_series_discontinuity": false,
     "roic_median_5y_pct": null,
     "roic_series_pct": [],
     "shares_used_for_market_cap": 299061662,
@@ -182,13 +184,15 @@
     "ev_to_sales": 748.8120853568361,
     "eps_used_for_trailing_pe": null,
     "trailing_pe": null,
+    "negative_trailing_pe_not_scored": false,
     "fcf_used_for_yield": -1785998000,
     "fcf_yield_latest_pct": -18.47202452388064,
     "discount_from_52w_high_pct": -75.70816536129819,
     "price_vs_52w_low_pct": 7.052983491076947,
+    "relative_ev_to_sales_percentile": 10.0,
     "dcf_upside_pct": -340.7052137103492,
     "customer_concentration_score": null,
-    "revenue_percentile_vs_peers": null
+    "revenue_percentile_vs_peers": 0.0
   },
   "fcf_series_by_year": {
     "2020-12-31": -31213000,
@@ -284,19 +288,24 @@
         "dcf_upside_pct": {
           "value": -340.7052,
           "score": 0.0,
-          "weight": 0.25
+          "weight": 0.2
         },
         "discount_from_52w_high_pct": {
           "value": -75.7082,
           "score": 9.0,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 10.0,
+          "score": 1.0,
+          "weight": 0.15
         }
       },
-      "total": 1.28,
+      "total": 1.31,
       "missing_metrics": [
         "trailing_pe"
       ],
-      "weights_renormalised_over": 0.8
+      "weights_renormalised_over": 0.9
     },
     "moat": {
       "subscores": {
@@ -310,19 +319,23 @@
           "score": 7.834,
           "weight": 0.15
         },
+        "revenue_percentile_vs_peers": {
+          "value": 0.0,
+          "score": 1.0,
+          "weight": 0.15
+        },
         "capex_intensity_latest_pct": {
           "value": 7701.5624,
           "score": 10.0,
           "weight": 0.15
         }
       },
-      "total": 8.18,
+      "total": 6.52,
       "missing_metrics": [
         "roic_median_5y_pct",
-        "revenue_percentile_vs_peers",
         "customer_concentration_score"
       ],
-      "weights_renormalised_over": 0.5
+      "weights_renormalised_over": 0.65
     }
   },
   "dcf": {
@@ -363,14 +376,116 @@
     "distance_dollars": -110.15
   },
   "peers": {
-    "rows": [],
+    "group": "space_comms",
+    "rows": [
+      {
+        "symbol": "RKLB",
+        "name": "Rocket Lab Corp",
+        "rationale": "Space services / satellite platform comp",
+        "revenue": 769146000,
+        "revenue_annual": 601799000,
+        "revenue_ttm": 769146000,
+        "gross_margin_latest_pct": 34.426943215259584,
+        "gross_margin_median_5y_pct": 21.018267155099103,
+        "roic_median_5y_pct": -35.317379701972186,
+        "fcf_margin_latest_pct": -65.28841024993395,
+        "fcf_margin_median_5y_pct": -84.64504153856218,
+        "price_to_sales": 43.447164898532094,
+        "ev_to_sales": 40.69559887595641,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 53.06999969482422,
+          "last_date": "2026-11-06",
+          "high_52w": 150.22999572753906,
+          "low_52w": 39.47999954223633,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/RKLB?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "IRDM",
+        "name": "Iridium Communications Inc.",
+        "rationale": "LEO satellite communications incumbent comp",
+        "revenue": 902967000,
+        "revenue_annual": 871659000,
+        "revenue_ttm": 902967000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": 2.9955500945718234,
+        "fcf_margin_latest_pct": 28.476043957556797,
+        "fcf_margin_median_5y_pct": 29.20588143236521,
+        "price_to_sales": 5.312598511047172,
+        "ev_to_sales": 7.169661947473974,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 44.040000915527344,
+          "last_date": "2026-11-06",
+          "high_52w": 55.720001220703125,
+          "low_52w": 15.84000015258789,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/IRDM?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "GSAT",
+        "name": "Globalstar, Inc.",
+        "rationale": "LEO satellite / direct-to-device comp",
+        "revenue": 277700000,
+        "revenue_annual": 272986000,
+        "revenue_ttm": 277700000,
+        "gross_margin_latest_pct": 91.1734422155157,
+        "gross_margin_median_5y_pct": 90.47269172544712,
+        "roic_median_5y_pct": -0.2094139576421232,
+        "fcf_margin_latest_pct": -5.501146388496637,
+        "fcf_margin_median_5y_pct": -5.553558916055858,
+        "price_to_sales": 39.34558833437168,
+        "ev_to_sales": 39.42810543916103,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 84.31999969482422,
+          "last_date": "2026-11-06",
+          "high_52w": 84.58000183105469,
+          "low_52w": 50.47999954223633,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/GSAT?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "VSAT",
+        "name": "Viasat Inc.",
+        "rationale": "Satellite communications incumbent comp",
+        "revenue": 4664872000,
+        "revenue_annual": 4640280000,
+        "revenue_ttm": 4664872000,
+        "gross_margin_latest_pct": 65.27854511248727,
+        "gross_margin_median_5y_pct": 65.8364262183449,
+        "roic_median_5y_pct": -2.0141872981385127,
+        "fcf_margin_latest_pct": -31.045264025150242,
+        "fcf_margin_median_5y_pct": -18.80340847225056,
+        "price_to_sales": 1.9006077885469717,
+        "ev_to_sales": 2.7628080804306503,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 63.95000076293945,
+          "last_date": "2026-11-06",
+          "high_52w": 89.80999755859375,
+          "low_52w": 30.350000381469727,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/VSAT?range=1y&interval=1d"
+        }
+      }
+    ],
     "percentile_ranks_for_subject": {
-      "gross_margin_latest_pct": null,
-      "fcf_margin_latest_pct": null,
-      "price_to_sales": null,
-      "revenue": null
+      "gross_margin_latest_pct": 33.3,
+      "fcf_margin_latest_pct": 0.0,
+      "price_to_sales": 100.0,
+      "revenue": 0.0,
+      "gross_margin_median_5y_pct": 33.3,
+      "roic_median_5y_pct": null,
+      "fcf_margin_median_5y_pct": 0.0,
+      "revenue_ttm": 0.0
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -386,7 +501,7 @@
     {
       "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
       "status": "pass",
-      "evidence": "0 US-listed EDGAR peers in config peer set"
+      "evidence": "4 US-listed EDGAR peers in config peer set"
     },
     {
       "check": "no_single_customer_dependency",
@@ -481,6 +596,7 @@
       "as_of": "2026-06-30",
       "method": "current_plus_noncurrent_pair",
       "components": {
+        "family": "bank_debt",
         "current_concept": "LongTermDebtCurrent",
         "current_value": 8494000,
         "noncurrent_concept": "LongTermDebtNoncurrent",
@@ -499,8 +615,18 @@
       "span_years": 2.0,
       "annual_points": 3
     },
+    "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": false,
+    "peer_group": {
+      "name": "space_comms",
+      "members_evaluated": 4,
+      "members_with_ev_to_sales": 5,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 10.0,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [],
     "missing_value_metrics": [
@@ -508,7 +634,6 @@
     ],
     "missing_moat_metrics": [
       "roic_median_5y_pct",
-      "revenue_percentile_vs_peers",
       "customer_concentration_score"
     ],
     "peak_cycle_warning": false,
@@ -516,7 +641,7 @@
   },
   "explanations": {
     "business": "Business score is 2.76/10, driven mainly by revenue cagr 5y pct scored 9.232/10 (value 32.3233) and gross margin stdev 5y pts scored 7.834/10 (value 5.4149). The main drags were interest coverage ttm scored 0.0/10 (value -0.0356) and leverage debt to revenue ttm scored 0.0/10 (value 214.9668). Debt-to-TTM-revenue leverage scored 0.0/10 (value 214.9668) and Interest coverage scored 0.0/10 (value -0.0356). Diluted share count changed +76.8052%/yr over 2.0 years, scored 0.0/10.",
-    "value": "Value score is 1.28/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -75.7082) and price to sales scored 0.5/10 (value 699.3609). The main drags were dcf upside pct scored 0.0/10 (value -340.7052) and fcf yield latest pct scored 0.0/10 (value -18.472). The DCF fair value is $-77.82 vs the current $32.33 (-340.7%).",
-    "moat": "Moat score is 8.18/10, driven mainly by capex intensity latest pct scored 10.0/10 (value 7701.5624) and gross margin stdev 5y pts scored 7.834/10 (value 5.4149). The main drags were gross margin median 5y pct scored 7.074/10 (value 49.3045) and gross margin stdev 5y pts scored 7.834/10 (value 5.4149)."
+    "value": "Value score is 1.31/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -75.7082) and relative ev to sales percentile scored 1.0/10 (value 10.0). The main drags were dcf upside pct scored 0.0/10 (value -340.7052) and fcf yield latest pct scored 0.0/10 (value -18.472). The DCF fair value is $-77.82 vs the current $32.33 (-340.7%).",
+    "moat": "Moat score is 6.52/10, driven mainly by capex intensity latest pct scored 10.0/10 (value 7701.5624) and gross margin stdev 5y pts scored 7.834/10 (value 5.4149). The main drags were revenue percentile vs peers scored 1.0/10 (value 0.0) and gross margin median 5y pct scored 7.074/10 (value 49.3045)."
   }
 }

@@ -165,13 +165,15 @@
     "ev_to_sales": 6.485654250107649,
     "eps_used_for_trailing_pe": 0.9299999999999999,
     "trailing_pe": 24.435484281150245,
+    "negative_trailing_pe_not_scored": false,
     "fcf_used_for_yield": null,
     "fcf_yield_latest_pct": null,
     "discount_from_52w_high_pct": -69.25314672508954,
     "price_vs_52w_low_pct": 8.73206122607475,
+    "relative_ev_to_sales_percentile": 58.3,
     "dcf_upside_pct": null,
     "customer_concentration_score": 4.0,
-    "revenue_percentile_vs_peers": null
+    "revenue_percentile_vs_peers": 20.0
   },
   "fcf_series_by_year": {},
   "fcf_raw_series_by_year": {},
@@ -223,7 +225,7 @@
         "trailing_pe": {
           "value": 24.4355,
           "score": 4.613,
-          "weight": 0.2
+          "weight": 0.1
         },
         "price_to_sales": {
           "value": 7.9173,
@@ -239,14 +241,19 @@
           "value": -69.2531,
           "score": 9.0,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 58.3,
+          "score": 5.83,
+          "weight": 0.15
         }
       },
-      "total": 4.84,
+      "total": 5.13,
       "missing_metrics": [
         "fcf_yield_latest_pct",
         "dcf_upside_pct"
       ],
-      "weights_renormalised_over": 0.55
+      "weights_renormalised_over": 0.6
     },
     "moat": {
       "subscores": {
@@ -255,20 +262,24 @@
           "score": 7.787,
           "weight": 0.2
         },
+        "revenue_percentile_vs_peers": {
+          "value": 20.0,
+          "score": 3.0,
+          "weight": 0.15
+        },
         "customer_concentration_score": {
           "value": 4.0,
           "score": 4.0,
           "weight": 0.15
         }
       },
-      "total": 6.16,
+      "total": 5.21,
       "missing_metrics": [
         "gross_margin_median_5y_pct",
         "gross_margin_stdev_5y_pts",
-        "revenue_percentile_vs_peers",
         "capex_intensity_latest_pct"
       ],
-      "weights_renormalised_over": 0.35
+      "weights_renormalised_over": 0.5
     }
   },
   "dcf": {
@@ -299,14 +310,140 @@
     "distance_dollars": null
   },
   "peers": {
-    "rows": [],
+    "group": "fintech_lending",
+    "rows": [
+      {
+        "symbol": "SOFI",
+        "name": "SoFi Technologies, Inc.",
+        "rationale": "Digital lending / HELOC comp",
+        "revenue": 616767000,
+        "revenue_annual": 619353000,
+        "revenue_ttm": 616767000,
+        "gross_margin_latest_pct": 1.6719060051376196,
+        "gross_margin_median_5y_pct": 8.246492408417028,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": -685.7091190322805,
+        "fcf_margin_median_5y_pct": -685.7091190322805,
+        "price_to_sales": 35.68627223390178,
+        "ev_to_sales": 37.41172447113237,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 16.209999084472656,
+          "last_date": "2026-11-06",
+          "high_52w": 32.209999084472656,
+          "low_52w": 14.220000267028809,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/SOFI?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "UPST",
+        "name": "Upstart Holdings, Inc.",
+        "rationale": "AI lending platform comp",
+        "revenue": 1339534000,
+        "revenue_annual": 1043857000,
+        "revenue_ttm": 1339534000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": -26.825705053469967,
+        "fcf_margin_median_5y_pct": -26.825705053469967,
+        "price_to_sales": 2.0494083168363395,
+        "ev_to_sales": 2.0494083168363395,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 21.889999389648438,
+          "last_date": "2026-11-06",
+          "high_52w": 50.70000076293945,
+          "low_52w": 21.309999465942383,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/UPST?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "AFRM",
+        "name": "Affirm Holdings, Inc.",
+        "rationale": "Consumer credit / BNPL comp",
+        "revenue": 1516863000,
+        "revenue_annual": 1443922000,
+        "revenue_ttm": 1516863000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": -0.7913788600789522,
+        "fcf_margin_latest_pct": 47.64502514678771,
+        "fcf_margin_median_5y_pct": -6.497394698356432,
+        "price_to_sales": 15.795757973127333,
+        "ev_to_sales": 21.23307301080707,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 68.11000061035156,
+          "last_date": "2026-11-06",
+          "high_52w": 85.77999877929688,
+          "low_52w": 42.529998779296875,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/AFRM?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "COIN",
+        "name": "Coinbase Global, Inc.",
+        "rationale": "Fintech platform valuation comp",
+        "revenue": 5629761000,
+        "revenue_annual": 7181325000,
+        "revenue_ttm": 5629761000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": 11.315183626638632,
+        "fcf_margin_latest_pct": -98.74670027750227,
+        "fcf_margin_median_5y_pct": -5.267939885871307,
+        "price_to_sales": 6.893374062963615,
+        "ev_to_sales": 6.421605012732176,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 134.75999450683594,
+          "last_date": "2026-11-06",
+          "high_52w": 317.92999267578125,
+          "low_52w": 134.75999450683594,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/COIN?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "HOOD",
+        "name": "Robinhood Markets, Inc.",
+        "rationale": "Fintech platform comp",
+        "revenue": 5082000000,
+        "revenue_annual": 4473000000,
+        "revenue_ttm": 5082000000,
+        "gross_margin_latest_pct": null,
+        "gross_margin_median_5y_pct": null,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": -112.96023564064801,
+        "fcf_margin_median_5y_pct": 38.92698030076159,
+        "price_to_sales": 14.50393808268037,
+        "ev_to_sales": 14.50393808268037,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 80.91000366210938,
+          "last_date": "2026-11-06",
+          "high_52w": 137.0800018310547,
+          "low_52w": 65.16000366210938,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/HOOD?range=1y&interval=1d"
+        }
+      }
+    ],
     "percentile_ranks_for_subject": {
       "gross_margin_latest_pct": null,
       "fcf_margin_latest_pct": null,
-      "price_to_sales": null,
-      "revenue": null
+      "price_to_sales": 40.0,
+      "revenue": 20.0,
+      "gross_margin_median_5y_pct": null,
+      "roic_median_5y_pct": 100.0,
+      "fcf_margin_median_5y_pct": null,
+      "revenue_ttm": 20.0
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -322,7 +459,7 @@
     {
       "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
       "status": "pass",
-      "evidence": "0 US-listed EDGAR peers in config peer set"
+      "evidence": "5 US-listed EDGAR peers in config peer set"
     },
     {
       "check": "no_single_customer_dependency",
@@ -430,7 +567,16 @@
     },
     "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": false,
+    "peer_group": {
+      "name": "fintech_lending",
+      "members_evaluated": 5,
+      "members_with_ev_to_sales": 6,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 58.3,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [
       "gross_margin_median_5y_pct",
@@ -445,7 +591,6 @@
     "missing_moat_metrics": [
       "gross_margin_median_5y_pct",
       "gross_margin_stdev_5y_pts",
-      "revenue_percentile_vs_peers",
       "capex_intensity_latest_pct"
     ],
     "peak_cycle_warning": false,
@@ -453,7 +598,7 @@
   },
   "explanations": {
     "business": "Business score is 6.46/10, driven mainly by revenue cagr 5y pct scored 10.0/10 (value 55.5261) and net cash to revenue scored 10.0/10 (value 1.4317). The main drags were dilution share count growth pct scored 0.0/10 (value 66.192) and operating margin median 5y pct scored 3.542/10 (value 2.7091). Debt-to-TTM-revenue leverage scored 7.615/10 (value 0.5962). Diluted share count changed +66.192%/yr over 2.0 years, scored 0.0/10.",
-    "value": "Value score is 4.84/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -69.2531) and trailing pe scored 4.613/10 (value 24.4355). The main drags were price to sales scored 3.041/10 (value 7.9173) and ev to sales scored 3.843/10 (value 6.4857).",
-    "moat": "Moat score is 6.16/10, driven mainly by roic median 5y pct scored 7.787/10 (value 16.1486) and customer concentration score scored 4.0/10 (value 4.0)."
+    "value": "Value score is 5.13/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -69.2531) and relative ev to sales percentile scored 5.83/10 (value 58.3). The main drags were price to sales scored 3.041/10 (value 7.9173) and ev to sales scored 3.843/10 (value 6.4857).",
+    "moat": "Moat score is 5.21/10, driven mainly by roic median 5y pct scored 7.787/10 (value 16.1486) and customer concentration score scored 4.0/10 (value 4.0). The main drags were revenue percentile vs peers scored 3.0/10 (value 20.0) and customer concentration score scored 4.0/10 (value 4.0)."
   }
 }

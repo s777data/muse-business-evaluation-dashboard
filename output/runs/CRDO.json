@@ -171,6 +171,7 @@
     "dilution_share_count_growth_pct": 20.76763738782741,
     "dilution_span_years": 4.01,
     "dilution_annual_points": 5,
+    "dilution_share_series_discontinuity": false,
     "roic_median_5y_pct": null,
     "roic_series_pct": [],
     "shares_used_for_market_cap": 194378000,
@@ -181,13 +182,15 @@
     "ev_to_sales": 14.722709411258768,
     "eps_used_for_trailing_pe": 2.84,
     "trailing_pe": 42.43309934374312,
+    "negative_trailing_pe_not_scored": false,
     "fcf_used_for_yield": 203436000,
     "fcf_yield_latest_pct": 0.8684755665978394,
     "discount_from_52w_high_pct": -60.16461506258213,
     "price_vs_52w_low_pct": 37.23950061132471,
+    "relative_ev_to_sales_percentile": 78.6,
     "dcf_upside_pct": -92.54833636974915,
     "customer_concentration_score": null,
-    "revenue_percentile_vs_peers": null
+    "revenue_percentile_vs_peers": 16.7
   },
   "fcf_series_by_year": {
     "2020-04-30": -20332000,
@@ -259,7 +262,7 @@
         "trailing_pe": {
           "value": 42.4331,
           "score": 2.318,
-          "weight": 0.2
+          "weight": 0.1
         },
         "price_to_sales": {
           "value": 14.7227,
@@ -279,15 +282,20 @@
         "dcf_upside_pct": {
           "value": -92.5483,
           "score": 0.0,
-          "weight": 0.25
+          "weight": 0.2
         },
         "discount_from_52w_high_pct": {
           "value": -60.1646,
           "score": 9.0,
           "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 78.6,
+          "score": 7.86,
+          "weight": 0.15
         }
       },
-      "total": 1.93,
+      "total": 2.87,
       "missing_metrics": [],
       "weights_renormalised_over": 1.0
     },
@@ -303,19 +311,23 @@
           "score": 8.554,
           "weight": 0.15
         },
+        "revenue_percentile_vs_peers": {
+          "value": 16.7,
+          "score": 2.67,
+          "weight": 0.15
+        },
         "capex_intensity_latest_pct": {
           "value": 4.2915,
           "score": 2.717,
           "weight": 0.15
         }
       },
-      "total": 6.86,
+      "total": 5.89,
       "missing_metrics": [
         "roic_median_5y_pct",
-        "revenue_percentile_vs_peers",
         "customer_concentration_score"
       ],
-      "weights_renormalised_over": 0.5
+      "weights_renormalised_over": 0.65
     }
   },
   "dcf": {
@@ -356,14 +368,164 @@
     "distance_dollars": -111.53
   },
   "peers": {
-    "rows": [],
+    "group": "connectivity_semis",
+    "rows": [
+      {
+        "symbol": "AVGO",
+        "name": "Broadcom Inc.",
+        "rationale": "AI networking / custom silicon comp",
+        "revenue": 89104000000,
+        "revenue_annual": 63887000000,
+        "revenue_ttm": 89104000000,
+        "gross_margin_latest_pct": 67.76652527118193,
+        "gross_margin_median_5y_pct": 66.54519169954523,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": 30.28159093399283,
+        "fcf_margin_median_5y_pct": 42.32058287795993,
+        "price_to_sales": 16.107728518710186,
+        "ev_to_sales": 16.524140800987077,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 293.69000244140625,
+          "last_date": "2026-11-06",
+          "high_52w": 481.57000732421875,
+          "low_52w": 291.5299987792969,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/AVGO?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "MRVL",
+        "name": "Marvell Technology, Inc.",
+        "rationale": "Data-center connectivity silicon comp",
+        "revenue": 9450300000,
+        "revenue_annual": 8194600000,
+        "revenue_ttm": 9450300000,
+        "gross_margin_latest_pct": 51.017743391989846,
+        "gross_margin_median_5y_pct": 46.25761921835783,
+        "roic_median_5y_pct": -1.5020125428173567,
+        "fcf_margin_latest_pct": 9.830864227662119,
+        "fcf_margin_median_5y_pct": 8.95668626258531,
+        "price_to_sales": 13.763947936967154,
+        "ev_to_sales": 13.876864987219527,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 141.1999969482422,
+          "last_date": "2026-11-06",
+          "high_52w": 316.42999267578125,
+          "low_52w": 73.7300033569336,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/MRVL?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "NVDA",
+        "name": "NVIDIA Corporation",
+        "rationale": "NVLink / InfiniBand connectivity ecosystem comp",
+        "revenue": 302970000000,
+        "revenue_annual": 215938000000,
+        "revenue_ttm": 302970000000,
+        "gross_margin_latest_pct": 71.06808435754708,
+        "gross_margin_median_5y_pct": 71.06808435754708,
+        "roic_median_5y_pct": 61.72220142268813,
+        "fcf_margin_latest_pct": 41.812927784827124,
+        "fcf_margin_median_5y_pct": 38.52795377696071,
+        "price_to_sales": 14.960399990684266,
+        "ev_to_sales": 14.996453065246104,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 186.63999938964844,
+          "last_date": "2026-11-06",
+          "high_52w": 239.24000549316406,
+          "low_52w": 165.1699981689453,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/NVDA?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "AMD",
+        "name": "Advanced Micro Devices, Inc.",
+        "rationale": "Data-center interconnect (Infinity Fabric / Pensando) comp",
+        "revenue": 45436000000,
+        "revenue_annual": 34639000000,
+        "revenue_ttm": 45436000000,
+        "gross_margin_latest_pct": 49.51644100580271,
+        "gross_margin_median_5y_pct": 48.24753559693319,
+        "roic_median_5y_pct": 2.9082854621742813,
+        "fcf_margin_latest_pct": 14.714628020439388,
+        "fcf_margin_median_5y_pct": 8.618278886487861,
+        "price_to_sales": 16.41551752339808,
+        "ev_to_sales": 16.407946434393768,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 449.0400085449219,
+          "last_date": "2026-11-06",
+          "high_52w": 649.4199829101562,
+          "low_52w": 190.9499969482422,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/AMD?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "ANET",
+        "name": "Arista Networks, Inc.",
+        "rationale": "Data-center Ethernet switching comp",
+        "revenue": 11890100000,
+        "revenue_annual": 9005700000,
+        "revenue_ttm": 11890100000,
+        "gross_margin_latest_pct": 64.05609780472368,
+        "gross_margin_median_5y_pct": 63.797672824323435,
+        "roic_median_5y_pct": 87.75956795904352,
+        "fcf_margin_latest_pct": 42.3420722431349,
+        "fcf_margin_median_5y_pct": 29.057028770349135,
+        "price_to_sales": 18.36120502777578,
+        "ev_to_sales": 17.153561694246207,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 170.8000030517578,
+          "last_date": "2026-11-06",
+          "high_52w": 216.74000549316406,
+          "low_52w": 116.12999725341797,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/ANET?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "ALAB",
+        "name": "Astera Labs, Inc.",
+        "rationale": "PCIe / CXL connectivity pure-play comp",
+        "revenue": 1556243000,
+        "revenue_annual": 852525000,
+        "revenue_ttm": 1556243000,
+        "gross_margin_latest_pct": 75.6882202867951,
+        "gross_margin_median_5y_pct": 74.57851018346165,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": 14.27864285504824,
+        "fcf_margin_median_5y_pct": -27.9684738004337,
+        "price_to_sales": 22.5577406008371,
+        "ev_to_sales": 22.5577406008371,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 190.7100067138672,
+          "last_date": "2026-11-06",
+          "high_52w": 483.0199890136719,
+          "low_52w": 100.2699966430664,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/ALAB?range=1y&interval=1d"
+        }
+      }
+    ],
     "percentile_ranks_for_subject": {
-      "gross_margin_latest_pct": null,
-      "fcf_margin_latest_pct": null,
-      "price_to_sales": null,
-      "revenue": null
+      "gross_margin_latest_pct": 66.7,
+      "fcf_margin_latest_pct": 50.0,
+      "price_to_sales": 16.7,
+      "revenue": 16.7,
+      "gross_margin_median_5y_pct": 33.3,
+      "roic_median_5y_pct": null,
+      "fcf_margin_median_5y_pct": 16.7,
+      "revenue_ttm": 16.7
     },
-    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them."
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
   },
   "moat_replicability_checks": [
     {
@@ -379,7 +541,7 @@
     {
       "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
       "status": "pass",
-      "evidence": "0 US-listed EDGAR peers in config peer set"
+      "evidence": "6 US-listed EDGAR peers in config peer set"
     },
     {
       "check": "no_single_customer_dependency",
@@ -487,8 +649,18 @@
       "span_years": 4.01,
       "annual_points": 5
     },
+    "dilution_share_series_discontinuity": false,
     "risk_free_and_erp": "config inputs in config/dcf.yaml",
-    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded in v1 - not SEC EDGAR XBRL filers and no free keyless source covers them.",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": false,
+    "peer_group": {
+      "name": "connectivity_semis",
+      "members_evaluated": 6,
+      "members_with_ev_to_sales": 7,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 78.6,
+      "relative_ev_to_sales_missing_reason": null
+    },
     "peer_failures": [],
     "missing_business_metrics": [
       "net_cash_to_revenue",
@@ -498,7 +670,6 @@
     "missing_value_metrics": [],
     "missing_moat_metrics": [
       "roic_median_5y_pct",
-      "revenue_percentile_vs_peers",
       "customer_concentration_score"
     ],
     "peak_cycle_warning": false,
@@ -506,7 +677,7 @@
   },
   "explanations": {
     "business": "Business score is 4.88/10, driven mainly by revenue growth latest pct scored 10.0/10 (value 205.6759) and revenue cagr 5y pct scored 10.0/10 (value 86.8016). The main drags were dilution share count growth pct scored 0.0/10 (value 20.7676) and fcf margin median 5y pct scored 0.0/10 (value -11.3681). Leverage checks (debt-to-TTM-revenue and interest coverage) were excluded: filed debt or interest data could not be determined. Diluted share count changed +20.7676%/yr over 4.01 years, scored 0.0/10; FCF is SBC-adjusted owner FCF (stock comp was 13.7% of revenue in the latest year).",
-    "value": "Value score is 1.93/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -60.1646) and trailing pe scored 2.318/10 (value 42.4331). The main drags were dcf upside pct scored 0.0/10 (value -92.5483) and ev to sales scored 0.583/10 (value 14.7227). The DCF fair value is $8.98 vs the current $120.51 (-92.5%).",
-    "moat": "Moat score is 6.86/10, driven mainly by gross margin median 5y pct scored 8.689/10 (value 61.891) and gross margin stdev 5y pts scored 8.554/10 (value 3.6145). The main drags were capex intensity latest pct scored 2.717/10 (value 4.2915) and gross margin stdev 5y pts scored 8.554/10 (value 3.6145)."
+    "value": "Value score is 2.87/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -60.1646) and relative ev to sales percentile scored 7.86/10 (value 78.6). The main drags were dcf upside pct scored 0.0/10 (value -92.5483) and ev to sales scored 0.583/10 (value 14.7227). The DCF fair value is $8.98 vs the current $120.51 (-92.5%).",
+    "moat": "Moat score is 5.89/10, driven mainly by gross margin median 5y pct scored 8.689/10 (value 61.891) and gross margin stdev 5y pts scored 8.554/10 (value 3.6145). The main drags were revenue percentile vs peers scored 2.67/10 (value 16.7) and capex intensity latest pct scored 2.717/10 (value 4.2915)."
   }
 }
