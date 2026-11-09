@@ -1,0 +1,768 @@
+{
+  "symbol": "TSLA",
+  "entity_name": "Tesla, Inc.",
+  "snapshot_date": "2026-11-08",
+  "inputs_with_sources": {
+    "filing_metrics": {
+      "source": "SEC EDGAR XBRL companyfacts",
+      "cik": "0001318605",
+      "fiscal_year_end": "2025-12-31"
+    },
+    "concentration": {
+      "source": "SEC EDGAR latest 10-K full text",
+      "filed": "2026-01-29",
+      "accession": "0001628280-26-003952",
+      "primary_document": "tsla-20251231.htm",
+      "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm"
+    },
+    "price": {
+      "source": "yahoo_chart",
+      "last_close": 358.2200012207031,
+      "last_date": "2026-11-06",
+      "high_52w": 489.8800048828125,
+      "low_52w": 298.32000732421875,
+      "points": 251,
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=1y&interval=1d"
+    },
+    "beta": {
+      "value": 1.6862,
+      "source": "computed 2026-11-07 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 104 weekly return points"
+    },
+    "dcf_config": "config/dcf.yaml",
+    "scoring_config": "config/scoring.yaml"
+  },
+  "kpis": {
+    "history_years": [
+      "2018-12-31",
+      "2021-12-31",
+      "2022-12-31",
+      "2023-12-31",
+      "2024-12-31",
+      "2025-12-31"
+    ],
+    "revenue_latest": 94827000000,
+    "fiscal_year_end": "2025-12-31",
+    "revenue_growth_latest_pct": -2.930699150373628,
+    "revenue_cagr_5y_pct": 34.603181997609546,
+    "revenue_cagr_years": 5,
+    "revenue_ttm": 103570000000,
+    "eps_diluted_ttm": 0.91,
+    "net_income_ttm": 3218000000,
+    "operating_income_ttm": 3466000000,
+    "interest_expense_ttm": 261000000,
+    "operating_cash_flow_ttm": 18710000000,
+    "share_based_compensation_ttm": 4300000000,
+    "depreciation_amortization_ttm": 5670000000,
+    "capex_ttm": 15407000000,
+    "ttm_details": {
+      "revenue": {
+        "value": 103570000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 94827000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 78669000000,
+        "ytd_prior": 69926000000,
+        "ttm_end": "2026-09-30"
+      },
+      "eps_diluted": {
+        "value": 0.91,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 1.08,
+        "annual_end": "2025-12-31",
+        "ytd_current": 0.67,
+        "ytd_prior": 0.84,
+        "ttm_end": "2026-09-30"
+      },
+      "net_income": {
+        "value": 3218000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 3794000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 2378000000,
+        "ytd_prior": 2954000000,
+        "ttm_end": "2026-09-30"
+      },
+      "operating_income": {
+        "value": 3466000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 4355000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 2057000000,
+        "ytd_prior": 2946000000,
+        "ttm_end": "2026-09-30"
+      },
+      "interest_expense": {
+        "value": 261000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 156000000,
+        "annual_end": "2023-12-31",
+        "ytd_current": 162000000,
+        "ytd_prior": 57000000,
+        "ttm_end": "2024-06-30"
+      },
+      "operating_cash_flow": {
+        "value": 18710000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 14747000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 14897000000,
+        "ytd_prior": 10934000000,
+        "ttm_end": "2026-09-30"
+      },
+      "share_based_compensation": {
+        "value": 4300000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 2825000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 3346000000,
+        "ytd_prior": 1871000000,
+        "ttm_end": "2026-09-30"
+      },
+      "depreciation_amortization": {
+        "value": 5670000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 5030000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 4290000000,
+        "ytd_prior": 3650000000,
+        "ttm_end": "2026-09-30"
+      },
+      "capex": {
+        "value": 15407000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 8527000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 13014000000,
+        "ytd_prior": 6134000000,
+        "ttm_end": "2026-09-30"
+      }
+    },
+    "ttm_end": "2026-09-30",
+    "sbc_ttm": 4300000000,
+    "fcf_raw_ttm": 3303000000,
+    "fcf_ttm": -997000000,
+    "sbc_ttm_unavailable": false,
+    "diluted_shares_latest_period": 3541000000,
+    "sbc_latest": 2825000000,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "fcf_adjusted_years": [
+      "2009-12-31",
+      "2010-12-31",
+      "2011-12-31",
+      "2012-12-31",
+      "2013-12-31",
+      "2016-12-31",
+      "2017-12-31",
+      "2018-12-31",
+      "2019-12-31",
+      "2020-12-31",
+      "2021-12-31",
+      "2022-12-31",
+      "2023-12-31",
+      "2024-12-31",
+      "2025-12-31"
+    ],
+    "fcf_raw_latest": 6220000000,
+    "fcf_latest": 3395000000,
+    "fcf_adjusted_latest": 3395000000,
+    "gross_margin_latest_pct": 18.026511436616154,
+    "gross_margin_median_5y_pct": 18.248891736331416,
+    "gross_margin_stdev_5y_pts": 3.625192529389855,
+    "operating_margin_median_5y_pct": 9.18747997891974,
+    "fcf_margin_median_5y_pct": 3.580203950351693,
+    "fcf_margin_latest_pct": 3.580203950351693,
+    "operating_margin_latest_pct": 4.592573845001951,
+    "operating_margin_ttm_pct": 3.3465289176402435,
+    "fcf_margin_ttm_pct": -0.9626339673650671,
+    "operating_margin_median_5y_pct_raw": 9.18747997891974,
+    "fcf_margin_median_5y_pct_raw": 3.580203950351693,
+    "margin_inflection_blend": {},
+    "cash_latest": 17853000000,
+    "investments_latest": 27594000000,
+    "total_debt_latest": 9284000000,
+    "total_debt_resolution": {
+      "value": 9284000000,
+      "as_of": "2026-09-30",
+      "method": "single_total:DebtInstrumentCarryingAmount",
+      "components": {
+        "concept": "DebtInstrumentCarryingAmount"
+      }
+    },
+    "debt_verified_zero": false,
+    "debt_not_determinable_fail_closed": false,
+    "balance_as_of": "2026-09-30",
+    "net_cash_latest": 36163000000,
+    "net_cash_to_revenue": 0.3491648160664285,
+    "leverage_debt_to_revenue_ttm": 0.08963985710147726,
+    "interest_coverage_ttm": 13.279693486590038,
+    "interest_coverage_missing_reason": null,
+    "capex_latest": 8527000000,
+    "capex_intensity_latest_pct": 8.992164678836197,
+    "operating_cash_flow_latest": 14747000000,
+    "net_income_latest": 3794000000,
+    "rd_expense_latest": 6411000000,
+    "eps_diluted_latest": 1.08,
+    "diluted_shares_latest": 3528000000,
+    "sbc_pct_of_revenue_latest": 2.9791093254031025,
+    "dilution_share_count_growth_pct": 1.66155603180409,
+    "dilution_span_years": 5.0,
+    "dilution_annual_points": 6,
+    "dilution_share_series_discontinuity": false,
+    "roic_median_5y_pct": 19.77173429610444,
+    "roic_series_pct": [
+      -6.393823666364544,
+      -12.569063251418777,
+      -2.6953252696959793,
+      -0.456704563152157,
+      12.639075316927666,
+      31.04103683798007,
+      47.22375915378356,
+      19.77173429610444,
+      13.590166527329009,
+      8.002918603394228
+    ],
+    "shares_used_for_market_cap": 3541000000,
+    "revenue_used_for_multiples": 103570000000,
+    "multiples_basis": "ttm",
+    "market_cap": 1268457024322.5098,
+    "price_to_sales": 12.247340198151104,
+    "ev_to_sales": 11.898175382084675,
+    "eps_used_for_trailing_pe": 0.91,
+    "trailing_pe": 393.64835298978363,
+    "negative_trailing_pe_not_scored": false,
+    "fcf_used_for_yield": -997000000,
+    "fcf_yield_latest_pct": -0.07859943071642522,
+    "discount_from_52w_high_pct": -26.875970104884082,
+    "price_vs_52w_low_pct": 20.079107141943766,
+    "relative_ev_to_sales_percentile": 8.3,
+    "dcf_upside_pct": -101.25341968195507,
+    "customer_concentration_score": null,
+    "revenue_percentile_vs_peers": 60.0
+  },
+  "fcf_series_by_year": {
+    "2009-12-31": -94143000,
+    "2010-12-31": -189176000,
+    "2011-12-31": -341679000,
+    "2012-12-31": -555454000,
+    "2013-12-31": -86967000,
+    "2016-12-31": -1738856000,
+    "2017-12-31": -3943000000,
+    "2018-12-31": -752000000,
+    "2019-12-31": 180000000,
+    "2020-12-31": 1052000000,
+    "2021-12-31": 2894000000,
+    "2022-12-31": 6006000000,
+    "2023-12-31": 2545000000,
+    "2024-12-31": 1582000000,
+    "2025-12-31": 3395000000
+  },
+  "fcf_raw_series_by_year": {
+    "2009-12-31": -92709000,
+    "2010-12-31": -168020000,
+    "2011-12-31": -312260000,
+    "2012-12-31": -505309000,
+    "2013-12-31": -6230000,
+    "2016-12-31": -1404631000,
+    "2017-12-31": -3476000000,
+    "2018-12-31": -3000000,
+    "2019-12-31": 1078000000,
+    "2020-12-31": 2786000000,
+    "2021-12-31": 5015000000,
+    "2022-12-31": 7566000000,
+    "2023-12-31": 4357000000,
+    "2024-12-31": 3581000000,
+    "2025-12-31": 6220000000
+  },
+  "scores": {
+    "business": {
+      "subscores": {
+        "revenue_growth_latest_pct": {
+          "value": -2.9307,
+          "score": 2.56,
+          "weight": 0.075
+        },
+        "revenue_cagr_5y_pct": {
+          "value": 34.6032,
+          "score": 9.46,
+          "weight": 0.075
+        },
+        "gross_margin_median_5y_pct": {
+          "value": 18.2489,
+          "score": 2.933,
+          "weight": 0.15
+        },
+        "operating_margin_median_5y_pct": {
+          "value": 9.1875,
+          "score": 4.837,
+          "weight": 0.15
+        },
+        "fcf_margin_median_5y_pct": {
+          "value": 3.5802,
+          "score": 3.574,
+          "weight": 0.15
+        },
+        "net_cash_to_revenue": {
+          "value": 0.3492,
+          "score": 7.095,
+          "weight": 0.1
+        },
+        "gross_margin_stdev_5y_pts": {
+          "value": 3.6252,
+          "score": 8.55,
+          "weight": 0.1
+        },
+        "dilution_share_count_growth_pct": {
+          "value": 1.6616,
+          "score": 6.423,
+          "weight": 0.05
+        },
+        "leverage_debt_to_revenue_ttm": {
+          "value": 0.0896,
+          "score": 9.641,
+          "weight": 0.075
+        },
+        "interest_coverage_ttm": {
+          "value": 13.2797,
+          "score": 9.508,
+          "weight": 0.075
+        }
+      },
+      "total": 5.92,
+      "missing_metrics": [],
+      "weights_renormalised_over": 1.0
+    },
+    "value": {
+      "subscores": {
+        "trailing_pe": {
+          "value": 393.6484,
+          "score": 1.0,
+          "weight": 0.1
+        },
+        "price_to_sales": {
+          "value": 12.2473,
+          "score": 1.326,
+          "weight": 0.15
+        },
+        "ev_to_sales": {
+          "value": 11.8982,
+          "score": 1.431,
+          "weight": 0.1
+        },
+        "fcf_yield_latest_pct": {
+          "value": -0.0786,
+          "score": 0.961,
+          "weight": 0.2
+        },
+        "dcf_upside_pct": {
+          "value": -101.2534,
+          "score": 0.0,
+          "weight": 0.2
+        },
+        "discount_from_52w_high_pct": {
+          "value": -26.876,
+          "score": 5.583,
+          "weight": 0.1
+        },
+        "relative_ev_to_sales_percentile": {
+          "value": 8.3,
+          "score": 0.83,
+          "weight": 0.15
+        }
+      },
+      "total": 1.32,
+      "missing_metrics": [],
+      "weights_renormalised_over": 1.0
+    },
+    "moat": {
+      "subscores": {
+        "roic_median_5y_pct": {
+          "value": 19.7717,
+          "score": 8.693,
+          "weight": 0.2
+        },
+        "gross_margin_median_5y_pct": {
+          "value": 18.2489,
+          "score": 2.933,
+          "weight": 0.2
+        },
+        "gross_margin_stdev_5y_pts": {
+          "value": 3.6252,
+          "score": 8.55,
+          "weight": 0.15
+        },
+        "revenue_percentile_vs_peers": {
+          "value": 60.0,
+          "score": 6.3,
+          "weight": 0.15
+        },
+        "capex_intensity_latest_pct": {
+          "value": 8.9922,
+          "score": 4.198,
+          "weight": 0.15
+        }
+      },
+      "total": 6.1,
+      "missing_metrics": [
+        "customer_concentration_score"
+      ],
+      "weights_renormalised_over": 0.85,
+      "coverage": 0.85
+    }
+  },
+  "dcf": {
+    "fcf_per_share_base": -0.2816,
+    "fcf_base_source": "ttm_owner_fcf",
+    "fcf_base_usd": -997000000,
+    "beta_raw": 1.6862,
+    "beta_adjusted": 1.4598,
+    "beta_adjustment": "blume",
+    "growth_cap_binds": true,
+    "growth_path_pct": [
+      25.0,
+      20.0,
+      15.0,
+      10.0,
+      5.0
+    ],
+    "wacc": {
+      "cost_of_equity_pct": 11.599,
+      "cost_of_debt_after_tax_pct": 3.825,
+      "equity_weight": 0.9927,
+      "debt_weight": 0.0073,
+      "wacc_pct": 11.542,
+      "inputs": {
+        "risk_free_rate_pct": 4.3,
+        "equity_risk_premium_pct": 5.0,
+        "beta": 1.459754,
+        "beta_raw": 1.6862,
+        "beta_adjusted": 1.4598,
+        "beta_adjustment": "blume",
+        "pre_tax_cost_of_debt_pct": 4.5,
+        "tax_rate_pct": 15.0
+      }
+    },
+    "fair_value_per_share": -4.49,
+    "pv_of_projected_fcf": -1.68,
+    "pv_of_terminal_value": -2.81,
+    "projected_fcf_per_share": [
+      -0.3519,
+      -0.4223,
+      -0.4857,
+      -0.5343,
+      -0.561
+    ],
+    "current_price": 358.2200012207031,
+    "upside_pct": -101.25,
+    "distance_dollars": -362.71
+  },
+  "peers": {
+    "group": "autos_ev",
+    "rows": [
+      {
+        "symbol": "GM",
+        "name": "General Motors Co",
+        "rationale": "Legacy auto scale comp",
+        "revenue": 169802000000,
+        "revenue_annual": 167971000000,
+        "revenue_ttm": 169802000000,
+        "gross_margin_latest_pct": 11.485165947706664,
+        "gross_margin_median_5y_pct": 10.031548049205334,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": 10.257723059337625,
+        "fcf_margin_median_5y_pct": 6.1018153217724445,
+        "price_to_sales": 0.4500766966719533,
+        "ev_to_sales": 0.28632715308589424,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 86.16000366210938,
+          "last_date": "2026-11-06",
+          "high_52w": 92.43000030517578,
+          "low_52w": 67.91000366210938,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/GM?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "F",
+        "name": "FORD MOTOR CO",
+        "rationale": "Legacy auto scale comp",
+        "revenue": 186965000000,
+        "revenue_annual": 187267000000,
+        "revenue_ttm": 186965000000,
+        "gross_margin_latest_pct": 6.835694489685849,
+        "gross_margin_median_5y_pct": 14.552956734452952,
+        "roic_median_5y_pct": 2.7088459810582606,
+        "fcf_margin_latest_pct": 6.385001094693672,
+        "fcf_margin_median_5y_pct": 3.531394906663791,
+        "price_to_sales": 0.2712028363043475,
+        "ev_to_sales": 0.15458207840848465,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 12.4399995803833,
+          "last_date": "2026-11-06",
+          "high_52w": 17.440000534057617,
+          "low_52w": 11.210000038146973,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/F?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "RIVN",
+        "name": "Rivian Automotive, Inc. / DE",
+        "rationale": "EV pure-play comp",
+        "revenue": 6480000000,
+        "revenue_annual": 5387000000,
+        "revenue_ttm": 6480000000,
+        "gross_margin_latest_pct": 2.673101912010395,
+        "gross_margin_median_5y_pct": -45.78258908434822,
+        "roic_median_5y_pct": -136.33599391866213,
+        "fcf_margin_latest_pct": -59.95916094301095,
+        "fcf_margin_median_5y_pct": -151.39828597203427,
+        "price_to_sales": 3.0370462196844596,
+        "ev_to_sales": 2.878558565363472,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 13.609999656677246,
+          "last_date": "2026-11-06",
+          "high_52w": 22.450000762939453,
+          "low_52w": 11.430000305175781,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/RIVN?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "LCID",
+        "name": "Lucid Group, Inc.",
+        "rationale": "EV pure-play comp",
+        "revenue": 1547122000,
+        "revenue_annual": 1353790000,
+        "revenue_ttm": 1547122000,
+        "gross_margin_latest_pct": -92.80508793830653,
+        "gross_margin_median_5y_pct": -142.46371251508313,
+        "roic_median_5y_pct": null,
+        "fcf_margin_latest_pct": -300.7368203340252,
+        "fcf_margin_median_5y_pct": -503.61310820596066,
+        "price_to_sales": 0.8125438129857211,
+        "ev_to_sales": 2.4235253645375705,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 3.2899999618530273,
+          "last_date": "2026-11-06",
+          "high_52w": 17.280000686645508,
+          "low_52w": 2.9800000190734863,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/LCID?range=1y&interval=1d"
+        }
+      },
+      {
+        "symbol": "ALV",
+        "name": "AUTOLIV INC",
+        "rationale": "Auto safety supplier comp",
+        "revenue": 11066000000,
+        "revenue_annual": 10815000000,
+        "revenue_ttm": 11066000000,
+        "gross_margin_latest_pct": 19.17706888580675,
+        "gross_margin_median_5y_pct": 18.35965978128797,
+        "roic_median_5y_pct": 20.68360498561841,
+        "fcf_margin_latest_pct": 4.268262707698358,
+        "fcf_margin_median_5y_pct": 4.346436948678506,
+        "price_to_sales": 0.8133890375012884,
+        "ev_to_sales": 0.9168049059270972,
+        "price": {
+          "source": "yahoo_chart",
+          "last_close": 123.47000122070312,
+          "last_date": "2026-11-06",
+          "high_52w": 131.69000244140625,
+          "low_52w": 100.33999633789062,
+          "points": 251,
+          "url": "https://query1.finance.yahoo.com/v8/finance/chart/ALV?range=1y&interval=1d"
+        }
+      }
+    ],
+    "percentile_ranks_for_subject": {
+      "gross_margin_latest_pct": 80.0,
+      "fcf_margin_latest_pct": 40.0,
+      "price_to_sales": 100.0,
+      "revenue": 60.0,
+      "gross_margin_median_5y_pct": 80.0,
+      "roic_median_5y_pct": 66.7,
+      "fcf_margin_median_5y_pct": 60.0,
+      "revenue_ttm": 60.0
+    },
+    "excluded_note": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra."
+  },
+  "moat_replicability_checks": [
+    {
+      "check": "new_entrant_capex_barrier",
+      "status": "fail",
+      "evidence": "latest FY capex $8,527,000,000 vs config barrier $10,000,000,000"
+    },
+    {
+      "check": "product_fungibility_risk (high margin volatility = commodity-like pricing)",
+      "status": "not_flagged",
+      "evidence": "gross-margin stdev over last 5 FYs = 3.63 pts (config flag threshold 15 pts)"
+    },
+    {
+      "check": "concentrated_industry_structure (small EDGAR peer set as oligopoly proxy)",
+      "status": "pass",
+      "evidence": "5 US-listed EDGAR peers in config peer set"
+    },
+    {
+      "check": "no_single_customer_dependency",
+      "status": "fail_or_unknown",
+      "evidence": "no single-customer sentence found in latest 10-K"
+    },
+    {
+      "check": "switching_costs / contract lock-in",
+      "status": "not_evaluated_v1",
+      "evidence": "No structured free source in v1 quantifies switching costs; flagged, not scored by proxy."
+    }
+  ],
+  "customer_concentration": {
+    "single_customer": null,
+    "top_ten": null,
+    "data_center": null
+  },
+  "concentration_score": null,
+  "data_quality": {
+    "trailing_multiples_basis": "ttm",
+    "ttm_end": "2026-09-30",
+    "ttm_details": {
+      "revenue": {
+        "value": 103570000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 94827000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 78669000000,
+        "ytd_prior": 69926000000,
+        "ttm_end": "2026-09-30"
+      },
+      "eps_diluted": {
+        "value": 0.91,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 1.08,
+        "annual_end": "2025-12-31",
+        "ytd_current": 0.67,
+        "ytd_prior": 0.84,
+        "ttm_end": "2026-09-30"
+      },
+      "net_income": {
+        "value": 3218000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 3794000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 2378000000,
+        "ytd_prior": 2954000000,
+        "ttm_end": "2026-09-30"
+      },
+      "operating_income": {
+        "value": 3466000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 4355000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 2057000000,
+        "ytd_prior": 2946000000,
+        "ttm_end": "2026-09-30"
+      },
+      "interest_expense": {
+        "value": 261000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 156000000,
+        "annual_end": "2023-12-31",
+        "ytd_current": 162000000,
+        "ytd_prior": 57000000,
+        "ttm_end": "2024-06-30"
+      },
+      "operating_cash_flow": {
+        "value": 18710000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 14747000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 14897000000,
+        "ytd_prior": 10934000000,
+        "ttm_end": "2026-09-30"
+      },
+      "share_based_compensation": {
+        "value": 4300000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 2825000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 3346000000,
+        "ytd_prior": 1871000000,
+        "ttm_end": "2026-09-30"
+      },
+      "depreciation_amortization": {
+        "value": 5670000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 5030000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 4290000000,
+        "ytd_prior": 3650000000,
+        "ttm_end": "2026-09-30"
+      },
+      "capex": {
+        "value": 15407000000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 8527000000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 13014000000,
+        "ytd_prior": 6134000000,
+        "ttm_end": "2026-09-30"
+      }
+    },
+    "consensus_eps": "missing_by_design_v1_no_paid_consensus - forward multiples use filed actuals and the config DCF only",
+    "beta": "config input - computed 2026-11-07 in code: OLS slope of weekly returns vs SPY (Yahoo chart API), 104 weekly return points",
+    "beta_missing": false,
+    "total_debt_resolution": {
+      "value": 9284000000,
+      "as_of": "2026-09-30",
+      "method": "single_total:DebtInstrumentCarryingAmount",
+      "components": {
+        "concept": "DebtInstrumentCarryingAmount"
+      }
+    },
+    "debt_not_determinable_fail_closed": false,
+    "debt_verified_zero": false,
+    "margin_inflection_blend": {},
+    "moat_coverage": 0.85,
+    "moat_low_coverage": false,
+    "post_period_earnings_release": null,
+    "post_period_earnings_period_end": null,
+    "finance_lease_liabilities": "excluded_from_total_debt - total debt counts borrowings and debt instruments per the config/sources.yaml resolution priority; operating and finance lease liabilities are not added (several total concepts already embed capital/finance leases)",
+    "interest_coverage_missing_reason": null,
+    "sbc_adjusted_fcf": true,
+    "sbc_not_reported_fcf_unadjusted_not_used": false,
+    "sbc_ttm_unavailable": false,
+    "fcf_basis": "owner_fcf = operating cash flow - capex - stock-based compensation (SBC-adjusted, v3); raw figures kept as fcf_raw_* in kpis",
+    "dilution_share_count_growth": {
+      "pct": 1.66155603180409,
+      "span_years": 5.0,
+      "annual_points": 6
+    },
+    "dilution_share_series_discontinuity": false,
+    "risk_free_and_erp": "config inputs in config/dcf.yaml",
+    "sk_hynix_samsung": "SK hynix (000660.KS) and Samsung Electronics (005930.KS) excluded - not SEC EDGAR XBRL filers and no free keyless source covers them. Nebius (NBIS) and IREN, the closest listed neocloud comps for CRWV, are IFRS 20-F filers and are likewise excluded from ai_infra.",
+    "negative_trailing_pe_not_scored": false,
+    "peer_group": {
+      "name": "autos_ev",
+      "members_evaluated": 5,
+      "members_with_ev_to_sales": 6,
+      "relative_ev_to_sales_min_group": 4,
+      "relative_ev_to_sales_percentile": 8.3,
+      "relative_ev_to_sales_missing_reason": null
+    },
+    "peer_failures": [],
+    "missing_business_metrics": [],
+    "missing_value_metrics": [],
+    "missing_moat_metrics": [
+      "customer_concentration_score"
+    ],
+    "peak_cycle_warning": false,
+    "switching_costs": "not_evaluated_v1"
+  },
+  "explanations": {
+    "business": "Business score is 5.92/10, driven mainly by leverage debt to revenue ttm scored 9.641/10 (value 0.0896) and interest coverage ttm scored 9.508/10 (value 13.2797). The main drags were revenue growth latest pct scored 2.56/10 (value -2.9307) and gross margin median 5y pct scored 2.933/10 (value 18.2489). Debt-to-TTM-revenue leverage scored 9.641/10 (value 0.0896) and Interest coverage scored 9.508/10 (value 13.2797). Diluted share count changed +1.6616%/yr over 5.0 years, scored 6.423/10; FCF is SBC-adjusted owner FCF (stock comp was 3.0% of revenue in the latest year).",
+    "value": "Value score is 1.32/10, driven mainly by discount from 52w high pct scored 5.583/10 (value -26.876) and ev to sales scored 1.431/10 (value 11.8982). The main drags were dcf upside pct scored 0.0/10 (value -101.2534) and relative ev to sales percentile scored 0.83/10 (value 8.3). The DCF fair value is $-4.49 vs the current $358.22 (-101.3%). Formula DCF not meaningful for this profile \u2014 growth capped, valued on trailing owner FCF only.",
+    "moat": "Moat score is 6.1/10, driven mainly by roic median 5y pct scored 8.693/10 (value 19.7717) and gross margin stdev 5y pts scored 8.55/10 (value 3.6252). The main drags were gross margin median 5y pct scored 2.933/10 (value 18.2489) and capex intensity latest pct scored 4.198/10 (value 8.9922). Moat coverage is 85% of the moat weight: missing metrics (customer concentration score) were excluded and the remaining weights renormalised."
+  }
+}

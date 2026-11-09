@@ -91,8 +91,25 @@ value:
     weight: 0.20
     anchors: [[-50, 0], [-25, 2], [0, 4.5], [25, 6.5], [50, 8], [100, 10]]
   discount_from_52w_high_pct:
-    weight: 0.10
+    weight: 0.05
     anchors: [[0, 2], [-15, 4], [-30, 6], [-45, 7.5], [-60, 9]]
+  # Forward buyback yield (v5.3, SPEC_V5.3): remaining repurchase
+  # authorization from the latest periodic filing (Item 703 table /
+  # narrative, post-period board actions included) as a % of market
+  # cap. Business already scores the REALISED net share count via
+  # dilution; this leg scores the FORWARD commitment in Value only.
+  # Weight 0.05 is funded from discount_from_52w_high (0.10->0.05),
+  # the noisiest Value leg; all eight weights still sum to 1.0.
+  # Anchors are deliberately ungenerous — authorizations are
+  # permissions, not commitments (MU used $7.84B of a $10B program
+  # over 8 years, $0 in FY25): a 4-5% yield scores ~6, and it takes
+  # a 20%-of-market-cap authorization to max the leg. Overvaluation
+  # cap (in scoring.apply_buyback_overvaluation_cap): when DCF
+  # upside < -50% the sub-score is capped at 4.0. Fail closed: no
+  # verifiable remaining figure -> missing, weights renormalise.
+  forward_buyback_yield_pct:
+    weight: 0.05
+    anchors: [[0, 2], [2, 4], [5, 6.5], [10, 8.5], [20, 10]]
   # Peer-relative EV/S (v4): the subject's cheapness percentile within
   # its sector peer group (config/peers.yaml), computed in run.py as
   # (peers with HIGHER EV/S + 0.5 x ties incl. self) / group size x 100
@@ -124,6 +141,25 @@ moat:
   capex_intensity_latest_pct:
     weight: 0.15
     anchors: [[0, 1], [5, 3], [15, 6], [25, 8], [35, 10]]
+
+# Inflection blend (v5): the 5-year MEDIAN margin is the through-cycle
+# level, but for a filer that has crossed from losses to profits while
+# scaling, the median scores the company it WAS (CRDO: median operating
+# margin -11.5% and owner-FCF margin -11.4% both scored 0 while filed
+# TTM operating margin was +31.7%). For operating_margin_median_5y_pct
+# and fcf_margin_median_5y_pct ONLY, when ALL of these hold —
+#   median < 0, min(latest FY, TTM) > 0,
+#   min(latest FY, TTM) - median >= min_distance_pts,
+#   revenue CAGR over the available span >= min_revenue_cagr_pct,
+#   |latest FY - TTM| <= max_latest_ttm_gap_pts (durability) —
+# the SCORED value is the average of the median and min(latest FY, TTM).
+# Flagged margin_inflection_blend with all values disclosed. A cyclical
+# with a positive median (MU: +26.1%) can never fire — the peak-cycle
+# protection is untouched. Anchors and weights unchanged.
+inflection:
+  min_distance_pts: 15
+  min_revenue_cagr_pct: 20
+  max_latest_ttm_gap_pts: 12
 
 # Rule table for the concentration sub-score (applied in code from filing facts,
 # parameters here): start from base_no_single_customer if no customer >= threshold,

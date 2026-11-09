@@ -91,6 +91,45 @@ def extract_concentration(text, search_cfg, rules_cfg, latest_fy_year=None):
     return out
 
 
+def get_periodic_buyback(sources_cfg, cik):
+    """Buyback authorization state from the NEWEST periodic filing
+    (latest 10-K vs latest 10-Q, whichever was filed most recently) —
+    SPEC_V5.3 §2.1: the periodic filing is the system of record, and a
+    post-period-end board action disclosed in it supersedes its own
+    period-end table. Fail soft: any fetch/parse failure returns
+    buyback=None with the error named, and the run proceeds with the
+    sub-score missing (fail closed), never with an invented figure."""
+    from .buybacks import extract_buyback
+    src = sources_cfg["sources"]
+    try:
+        sub = fetch_json(src["edgar_submissions_url"].format(cik=cik),
+                         src["user_agent"], src["timeout_seconds"], src["request_delay_seconds"])
+        recent = sub["filings"]["recent"]
+        latest = {}
+        for form, filed, acc, doc, rep in zip(recent["form"], recent["filingDate"],
+                                              recent["accessionNumber"],
+                                              recent["primaryDocument"],
+                                              recent["reportDate"]):
+            base = form.rstrip("/A") if form.endswith("/A") else form
+            if base in ("10-K", "10-Q") and base not in latest:
+                latest[base] = {"form": form, "filed": filed, "accession": acc,
+                                "primary_document": doc, "report_date": rep}
+        if not latest:
+            return {"filing": None, "buyback": None, "error": "no_periodic_filing_found"}
+        target = max(latest.values(), key=lambda t: t["filed"])
+        url = src["edgar_archive_url"].format(cik_int=int(cik),
+                                              accession_nodash=target["accession"].replace("-", ""),
+                                              primary_document=target["primary_document"])
+        raw = fetch_text(url, src["user_agent"], src["timeout_seconds"], src["request_delay_seconds"])
+        if "Undeclared Automated Tool" in raw[:2000]:
+            return {"filing": {**target, "url": url}, "buyback": None,
+                    "error": "sec_archives_blocked_undeclared_tool"}
+        buyback = extract_buyback(strip_html(raw))
+        return {"filing": {**target, "url": url}, "buyback": buyback, "error": None}
+    except Exception as exc:
+        return {"filing": None, "buyback": None, "error": str(exc)}
+
+
 def get_latest_10k_concentration(sources_cfg, rules_cfg, cik, latest_fy_year=None):
     src = sources_cfg["sources"]
     sub = fetch_json(src["edgar_submissions_url"].format(cik=cik),

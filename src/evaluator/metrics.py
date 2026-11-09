@@ -207,7 +207,7 @@ def _latest_period_value(period_rows):
     return cands[0]["value"]
 
 
-def compute_metrics(series, tax_rate_pct):
+def compute_metrics(series, tax_rate_pct, inflection_cfg=None):
     rev = series.get("revenue", [])
     periods = series.get("_periods", {})
     balance_latest = series.get("_balance_latest", {})
@@ -235,6 +235,7 @@ def compute_metrics(series, tax_rate_pct):
                             ("interest_expense", "interest_expense"),
                             ("operating_cash_flow", "operating_cash_flow"),
                             ("share_based_compensation", "share_based_compensation"),
+                            ("depreciation_amortization", "depreciation_amortization"),
                             ("capex", "capex")):
         annual = _latest(series.get(metric, []))
         if not annual:
@@ -298,13 +299,95 @@ def compute_metrics(series, tax_rate_pct):
     out["fcf_adjusted_latest"] = out["fcf_latest"]
     out["fcf_series_by_year"] = {e: fcf_by_end[e] for e in sorted(fcf_by_end)}
 
+    # Capex intensity history (v5.2): annual capex / annual revenue
+    # for the last five fiscal years (by period end) where both are
+    # filed. The median is the company's own mid-cycle capex intensity
+    # — the input the DCF base normalisation is built on. Fewer than 3
+    # observations in the window leaves the median None: normalisation
+    # unavailable, fail closed in the DCF base selection.
+    intensity_years = []
+    for end in sorted(rev_by_end)[-5:]:
+        if capex.get(end) and rev_by_end.get(end):
+            intensity_years.append((end, capex[end] / rev_by_end[end] * 100))
+    out["capex_intensity_series_pct"] = {e: round(v, 4) for e, v in intensity_years}
+    out["capex_intensity_observations"] = len(intensity_years)
+    out["capex_intensity_median_5y_pct"] = (
+        round(statistics.median([v for _, v in intensity_years]), 4)
+        if len(intensity_years) >= 3 else None)
+    # Normalised capex (v5.2): median-intensity capex on TTM revenue,
+    # capped at the actual TTM spend — the rule only trims expansion
+    # spikes, it never raises capex above what was actually spent.
+    # Normalised owner FCF exists only when every TTM input and the
+    # median exist; otherwise it stays None (fail closed).
+    med_intensity = out["capex_intensity_median_5y_pct"]
+    rev_ttm_val = out.get("revenue_ttm")
+    if med_intensity is not None and capex_t is not None and rev_ttm_val:
+        out["normalized_capex_ttm"] = min(capex_t, med_intensity / 100 * rev_ttm_val)
+    else:
+        out["normalized_capex_ttm"] = None
+    out["capex_normalized_binds"] = bool(
+        out["normalized_capex_ttm"] is not None and capex_t is not None
+        and out["normalized_capex_ttm"] < capex_t)
+    if out["normalized_capex_ttm"] is None:
+        out["capex_trimmed_usd"] = None
+    elif out["capex_normalized_binds"]:
+        out["capex_trimmed_usd"] = capex_t - out["normalized_capex_ttm"]
+    else:
+        out["capex_trimmed_usd"] = 0.0
+    out["fcf_normalized_ttm"] = (
+        ocf_t - out["normalized_capex_ttm"] - sbc_t) if (
+        ocf_t is not None and out["normalized_capex_ttm"] is not None
+        and sbc_t is not None) else None
+
     gm_vals = [v for _, v in gm_series]
     out["gross_margin_latest_pct"] = gm_vals[-1] if gm_vals else None
     out["gross_margin_median_5y_pct"] = _median_last(gm_vals)
     out["gross_margin_stdev_5y_pts"] = statistics.pstdev(gm_vals[-5:]) if len(gm_vals) >= 3 else None
-    out["operating_margin_median_5y_pct"] = _median_last([v for _, v in om_series])
+    om_vals = [v for _, v in om_series]
+    out["operating_margin_median_5y_pct"] = _median_last(om_vals)
     out["fcf_margin_median_5y_pct"] = _median_last([v for _, v in fcfm_series])
     out["fcf_margin_latest_pct"] = fcfm_series[-1][1] if fcfm_series else None
+    # Current-regime margins (v5): latest filed FY and TTM, the inputs
+    # the inflection blend below is tested against.
+    out["operating_margin_latest_pct"] = om_vals[-1] if om_vals else None
+    oi_ttm, rev_ttm = out.get("operating_income_ttm"), out.get("revenue_ttm")
+    out["operating_margin_ttm_pct"] = (oi_ttm / rev_ttm * 100) if (
+        oi_ttm is not None and rev_ttm) else None
+    out["fcf_margin_ttm_pct"] = (out["fcf_ttm"] / rev_ttm * 100) if (
+        out.get("fcf_ttm") is not None and rev_ttm) else None
+    # Inflection blend (v5, thresholds in config/scoring.yaml's
+    # inflection block): when a margin's 5-year median is negative but
+    # BOTH the latest FY and the TTM are solidly positive, at scale,
+    # and in agreement with each other, the median describes a company
+    # that no longer exists — score the metric on the average of the
+    # median and the more conservative current reading instead. The
+    # unblended medians are kept under *_raw and every blend is
+    # disclosed in margin_inflection_blend. A positive median (a
+    # cyclical at a peak, e.g. MU) can never trigger this.
+    out["operating_margin_median_5y_pct_raw"] = out["operating_margin_median_5y_pct"]
+    out["fcf_margin_median_5y_pct_raw"] = out["fcf_margin_median_5y_pct"]
+    blend = {}
+    if inflection_cfg:
+        cagr = out.get("revenue_cagr_5y_pct")
+        for metric, latest_key, ttm_key in (
+                ("operating_margin_median_5y_pct", "operating_margin_latest_pct",
+                 "operating_margin_ttm_pct"),
+                ("fcf_margin_median_5y_pct", "fcf_margin_latest_pct",
+                 "fcf_margin_ttm_pct")):
+            med, lat, ttm = out.get(metric), out.get(latest_key), out.get(ttm_key)
+            if med is None or lat is None or ttm is None or cagr is None:
+                continue
+            current = min(lat, ttm)
+            if (med < 0 < current
+                    and current - med >= inflection_cfg["min_distance_pts"]
+                    and cagr >= inflection_cfg["min_revenue_cagr_pct"]
+                    and abs(lat - ttm) <= inflection_cfg["max_latest_ttm_gap_pts"]):
+                blended = (med + current) / 2
+                blend[metric] = {"median": round(med, 2), "latest_fy": round(lat, 2),
+                                 "ttm": round(ttm, 2), "current_used": round(current, 2),
+                                 "blended": round(blended, 2)}
+                out[metric] = blended
+    out["margin_inflection_blend"] = blend
 
     def lat(name):
         row = _latest(series.get(name, []))
@@ -328,10 +411,28 @@ def compute_metrics(series, tax_rate_pct):
                          "value": lat("total_debt")}
     debt_res = resolve_total_debt(series.get("_debt_instants"), debt_fallback)
     debt = debt_res["value"]
+    # Verified-zero debt (v5): only when the resolver found nothing AND
+    # edgar's positive-evidence test on the raw companyfacts passed
+    # (no debt balance rows ever, no recent interest expense, no debt
+    # cash flows in the latest FY, complete balance sheet) may debt be
+    # read as exactly zero. Everything else stays fail-closed.
+    verified_zero = False
+    if debt is None:
+        vz = series.get("_verified_zero_debt") or {}
+        if vz.get("eligible"):
+            verified_zero = True
+            debt = 0
+            debt_res = {"value": 0,
+                        "as_of": max((r["end"] for r in balance_latest.values()),
+                                     default=None),
+                        "method": "verified_zero",
+                        "components": {},
+                        "evidence": vz.get("checks")}
     out["cash_latest"] = blat("cash")
     out["investments_latest"] = inv if (blat("investments_current") is not None or blat("investments_noncurrent") is not None) else None
     out["total_debt_latest"] = debt
     out["total_debt_resolution"] = debt_res
+    out["debt_verified_zero"] = verified_zero
     out["debt_not_determinable_fail_closed"] = debt is None
     out["balance_as_of"] = max((r["end"] for r in balance_latest.values()), default=None)
     # Snapshot balance-sheet strength vs trailing revenue (TTM when the

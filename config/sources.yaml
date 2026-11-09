@@ -37,7 +37,10 @@ concepts:
   # right concept per filer; no peer in the set tags both with live data.
   capex: ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"]
   cash: ["CashAndCashEquivalentsAtCarryingValue"]
-  investments_current: ["AvailableForSaleSecuritiesDebtSecuritiesCurrent"]
+  # ShortTermInvestments added in v5: CRDO files its $297.4M of
+  # marketable securities under that tag (Aug 2026), not under the AFS
+  # debt-securities concept, and the engine missed it.
+  investments_current: ["AvailableForSaleSecuritiesDebtSecuritiesCurrent", "ShortTermInvestments"]
   investments_noncurrent: ["AvailableForSaleSecuritiesDebtSecuritiesNoncurrent"]
   # Total debt is RESOLVED at the latest balance date (metrics.resolve_total_debt),
   # never taken from a single concept blindly — filers tag borrowings very
@@ -82,6 +85,24 @@ concepts:
   # from FCF to get owner FCF — see metrics.compute_metrics. GRAB (IFRS)
   # reports neither and fails closed.
   share_based_compensation: ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"]
+  # Balance-sheet completeness evidence for the v5 verified-zero-debt
+  # rule (metrics/edgar): a filer can only be verified debt-free when a
+  # complete balance sheet is on file.
+  total_liabilities: ["Liabilities"]
+  # Debt cash-flow lines: ANY proceeds/repayment activity in the latest
+  # fiscal year also blocks verified-zero (a borrower repaying is not a
+  # never-borrower for this rule's purposes without balance evidence).
+  debt_proceeds: ["ProceedsFromDebt", "ProceedsFromIssuanceOfDebt", "ProceedsFromLongTermDebt", "ProceedsFromShortTermDebt"]
+  debt_repayments: ["RepaymentsOfDebt", "ProceedsFromRepaymentsOfDebt", "RepaymentsOfLongTermDebt", "RepaymentsOfShortTermDebt"]
+  # Depreciation & amortisation: used only for the display-only TTM
+  # EBITDA behind the ipp_power debt/EBITDA KPI (v5, not scored).
+  depreciation_amortization: ["DepreciationDepletionAndAmortization", "DepreciationAndAmortization", "Depreciation", "DepreciationAmortizationAndAccretionExpense"]
+  # Cash actually spent on share repurchases (v5.3): the execution
+  # cross-check and the by-fiscal-year execution history shown with
+  # the buyback authorization (SPEC_V5.3 §2.1). Spent only — the
+  # authorized / remaining figures are NOT in XBRL; they come from
+  # the periodic filing text (src/evaluator/buybacks.py).
+  share_repurchases: ["PaymentsForRepurchaseOfCommonStock", "PaymentsForRepurchaseOfEquity", "StockRepurchasedAndRetiredDuringPeriodValue"]
   diluted_shares: ["WeightedAverageNumberOfDilutedSharesOutstanding"]
   eps_diluted: ["EarningsPerShareDiluted"]
   rd_expense: ["ResearchAndDevelopmentExpense"]

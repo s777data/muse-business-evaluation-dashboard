@@ -53,6 +53,7 @@
     "interest_expense_ttm": 22466000,
     "operating_cash_flow_ttm": -9875000,
     "share_based_compensation_ttm": 14023000,
+    "depreciation_amortization_ttm": 17635000,
     "capex_ttm": 24665000,
     "ttm_details": {
       "revenue": {
@@ -118,6 +119,15 @@
         "ytd_prior": 7674000,
         "ttm_end": "2026-09-30"
       },
+      "depreciation_amortization": {
+        "value": 17635000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 13817000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 13802000,
+        "ytd_prior": 9984000,
+        "ttm_end": "2026-09-30"
+      },
       "capex": {
         "value": 24665000,
         "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
@@ -154,6 +164,12 @@
     "operating_margin_median_5y_pct": 16.164593129204256,
     "fcf_margin_median_5y_pct": 6.176362635345935,
     "fcf_margin_latest_pct": -5.444206247856757,
+    "operating_margin_latest_pct": 11.86226019342311,
+    "operating_margin_ttm_pct": 11.243711026897811,
+    "fcf_margin_ttm_pct": -7.499359134723779,
+    "operating_margin_median_5y_pct_raw": 16.164593129204256,
+    "fcf_margin_median_5y_pct_raw": 6.176362635345935,
+    "margin_inflection_blend": {},
     "cash_latest": 7674000,
     "investments_latest": null,
     "total_debt_latest": 136750000,
@@ -165,6 +181,7 @@
         "concept": "DebtInstrumentCarryingAmount"
       }
     },
+    "debt_verified_zero": false,
     "debt_not_determinable_fail_closed": false,
     "balance_as_of": "2026-09-30",
     "net_cash_latest": -129076000,
@@ -204,7 +221,7 @@
     "discount_from_52w_high_pct": -21.064999511587335,
     "price_vs_52w_low_pct": 76.53239678396304,
     "relative_ev_to_sales_percentile": 64.3,
-    "dcf_upside_pct": -133.82936533541425,
+    "dcf_upside_pct": -160.21825442403653,
     "customer_concentration_score": null,
     "revenue_percentile_vs_peers": 0.0
   },
@@ -307,7 +324,7 @@
           "weight": 0.2
         },
         "dcf_upside_pct": {
-          "value": -133.8294,
+          "value": -160.2183,
           "score": 0.0,
           "weight": 0.2
         },
@@ -358,11 +375,18 @@
       "missing_metrics": [
         "customer_concentration_score"
       ],
-      "weights_renormalised_over": 0.85
+      "weights_renormalised_over": 0.85,
+      "coverage": 0.85
     }
   },
   "dcf": {
-    "fcf_per_share_base": -0.1537,
+    "fcf_per_share_base": -0.2854,
+    "fcf_base_source": "ttm_owner_fcf",
+    "fcf_base_usd": -48563000,
+    "beta_raw": 0.7885,
+    "beta_adjusted": 0.8583,
+    "beta_adjustment": "blume",
+    "growth_cap_binds": false,
     "growth_path_pct": [
       22.0492,
       17.6394,
@@ -371,32 +395,35 @@
       4.4098
     ],
     "wacc": {
-      "cost_of_equity_pct": 8.242,
+      "cost_of_equity_pct": 8.591,
       "cost_of_debt_after_tax_pct": 3.825,
       "equity_weight": 0.9261,
       "debt_weight": 0.0739,
-      "wacc_pct": 7.916,
+      "wacc_pct": 8.239,
       "inputs": {
         "risk_free_rate_pct": 4.3,
         "equity_risk_premium_pct": 5.0,
-        "beta": 0.7885,
+        "beta": 0.858295,
+        "beta_raw": 0.7885,
+        "beta_adjusted": 0.8583,
+        "beta_adjustment": "blume",
         "pre_tax_cost_of_debt_pct": 4.5,
         "tax_rate_pct": 15.0
       }
     },
-    "fair_value_per_share": -3.41,
-    "pv_of_projected_fcf": -0.96,
-    "pv_of_terminal_value": -2.45,
+    "fair_value_per_share": -6.07,
+    "pv_of_projected_fcf": -1.76,
+    "pv_of_terminal_value": -4.31,
     "projected_fcf_per_share": [
-      -0.1876,
-      -0.2207,
-      -0.2499,
-      -0.2719,
-      -0.2839
+      -0.3484,
+      -0.4098,
+      -0.464,
+      -0.505,
+      -0.5272
     ],
     "current_price": 10.079999923706055,
-    "upside_pct": -133.83,
-    "distance_dollars": -13.49
+    "upside_pct": -160.22,
+    "distance_dollars": -16.15
   },
   "peers": {
     "group": "solar",
@@ -658,6 +685,15 @@
         "ytd_prior": 7674000,
         "ttm_end": "2026-09-30"
       },
+      "depreciation_amortization": {
+        "value": 17635000,
+        "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
+        "annual_value": 13817000,
+        "annual_end": "2025-12-31",
+        "ytd_current": 13802000,
+        "ytd_prior": 9984000,
+        "ttm_end": "2026-09-30"
+      },
       "capex": {
         "value": 24665000,
         "basis": "annual_plus_current_fy_ytd_minus_prior_year_ytd",
@@ -680,6 +716,12 @@
       }
     },
     "debt_not_determinable_fail_closed": false,
+    "debt_verified_zero": false,
+    "margin_inflection_blend": {},
+    "moat_coverage": 0.85,
+    "moat_low_coverage": false,
+    "post_period_earnings_release": null,
+    "post_period_earnings_period_end": null,
     "finance_lease_liabilities": "excluded_from_total_debt - total debt counts borrowings and debt instruments per the config/sources.yaml resolution priority; operating and finance lease liabilities are not added (several total concepts already embed capital/finance leases)",
     "interest_coverage_missing_reason": null,
     "sbc_adjusted_fcf": true,
@@ -714,7 +756,7 @@
   },
   "explanations": {
     "business": "Business score is 5.63/10, driven mainly by leverage debt to revenue ttm scored 9.155/10 (value 0.2112) and gross margin stdev 5y pts scored 9.098/10 (value 2.2561). The main drags were dilution share count growth pct scored 0.588/10 (value 14.1216) and net cash to revenue scored 2.507/10 (value -0.1993). Debt-to-TTM-revenue leverage scored 9.155/10 (value 0.2112) and Interest coverage scored 5.241/10 (value 3.2409). Diluted share count changed +14.1216%/yr over 4.0 years, scored 0.588/10; FCF is SBC-adjusted owner FCF (stock comp was 2.1% of revenue in the latest year).",
-    "value": "Value score is 3.34/10, driven mainly by price to sales scored 6.852/10 (value 2.6483) and ev to sales scored 6.652/10 (value 2.8476). The main drags were dcf upside pct scored 0.0/10 (value -133.8294) and fcf yield latest pct scored 0.0/10 (value -2.8318). The DCF fair value is $-3.41 vs the current $10.08 (-133.8%).",
-    "moat": "Moat score is 5.05/10, driven mainly by gross margin stdev 5y pts scored 9.098/10 (value 2.2561) and roic median 5y pct scored 5.972/10 (value 10.7216). The main drags were revenue percentile vs peers scored 1.0/10 (value 0.0) and capex intensity latest pct scored 3.585/10 (value 6.9516)."
+    "value": "Value score is 3.34/10, driven mainly by price to sales scored 6.852/10 (value 2.6483) and ev to sales scored 6.652/10 (value 2.8476). The main drags were dcf upside pct scored 0.0/10 (value -160.2183) and fcf yield latest pct scored 0.0/10 (value -2.8318). The DCF fair value is $-6.07 vs the current $10.08 (-160.2%).",
+    "moat": "Moat score is 5.05/10, driven mainly by gross margin stdev 5y pts scored 9.098/10 (value 2.2561) and roic median 5y pct scored 5.972/10 (value 10.7216). The main drags were revenue percentile vs peers scored 1.0/10 (value 0.0) and capex intensity latest pct scored 3.585/10 (value 6.9516). Moat coverage is 85% of the moat weight: missing metrics (customer concentration score) were excluded and the remaining weights renormalised."
   }
 }

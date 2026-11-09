@@ -122,6 +122,12 @@
     "operating_margin_median_5y_pct": 2.7091247781509895,
     "fcf_margin_median_5y_pct": null,
     "fcf_margin_latest_pct": null,
+    "operating_margin_latest_pct": 23.187041914513724,
+    "operating_margin_ttm_pct": 28.412564733033985,
+    "fcf_margin_ttm_pct": null,
+    "operating_margin_median_5y_pct_raw": 2.7091247781509895,
+    "fcf_margin_median_5y_pct_raw": null,
+    "margin_inflection_blend": {},
     "cash_latest": 1437511000,
     "investments_latest": null,
     "total_debt_latest": 422624000,
@@ -133,6 +139,7 @@
         "concept": "DebtInstrumentCarryingAmount"
       }
     },
+    "debt_verified_zero": false,
     "debt_not_determinable_fail_closed": false,
     "balance_as_of": "2026-06-30",
     "net_cash_latest": 1014887000,
@@ -279,11 +286,18 @@
         "gross_margin_stdev_5y_pts",
         "capex_intensity_latest_pct"
       ],
-      "weights_renormalised_over": 0.5
+      "weights_renormalised_over": 0.5,
+      "coverage": 0.5
     }
   },
   "dcf": {
     "fcf_per_share_base": null,
+    "fcf_base_source": null,
+    "fcf_base_usd": null,
+    "beta_raw": 1.8321,
+    "beta_adjusted": 1.5575,
+    "beta_adjustment": "blume",
+    "growth_cap_binds": true,
     "growth_path_pct": [
       25.0,
       20.0,
@@ -292,15 +306,18 @@
       5.0
     ],
     "wacc": {
-      "cost_of_equity_pct": 13.46,
+      "cost_of_equity_pct": 12.088,
       "cost_of_debt_after_tax_pct": 3.825,
       "equity_weight": 0.93,
       "debt_weight": 0.07,
-      "wacc_pct": 12.786,
+      "wacc_pct": 11.509,
       "inputs": {
         "risk_free_rate_pct": 4.3,
         "equity_risk_premium_pct": 5.0,
-        "beta": 1.8321,
+        "beta": 1.5575070000000002,
+        "beta_raw": 1.8321,
+        "beta_adjusted": 1.5575,
+        "beta_adjustment": "blume",
         "pre_tax_cost_of_debt_pct": 4.5,
         "tax_rate_pct": 15.0
       }
@@ -554,6 +571,12 @@
       }
     },
     "debt_not_determinable_fail_closed": false,
+    "debt_verified_zero": false,
+    "margin_inflection_blend": {},
+    "moat_coverage": 0.5,
+    "moat_low_coverage": true,
+    "post_period_earnings_release": "2026-10-07",
+    "post_period_earnings_period_end": "2026-06-30",
     "finance_lease_liabilities": "excluded_from_total_debt - total debt counts borrowings and debt instruments per the config/sources.yaml resolution priority; operating and finance lease liabilities are not added (several total concepts already embed capital/finance leases)",
     "interest_coverage_missing_reason": "interest_expense_ttm_missing_or_nonpositive",
     "sbc_adjusted_fcf": true,
@@ -597,8 +620,8 @@
     "switching_costs": "not_evaluated_v1"
   },
   "explanations": {
-    "business": "Business score is 6.46/10, driven mainly by revenue cagr 5y pct scored 10.0/10 (value 55.5261) and net cash to revenue scored 10.0/10 (value 1.4317). The main drags were dilution share count growth pct scored 0.0/10 (value 66.192) and operating margin median 5y pct scored 3.542/10 (value 2.7091). Debt-to-TTM-revenue leverage scored 7.615/10 (value 0.5962). Diluted share count changed +66.192%/yr over 2.0 years, scored 0.0/10.",
+    "business": "Business score is 6.46/10, driven mainly by revenue cagr 5y pct scored 10.0/10 (value 55.5261) and net cash to revenue scored 10.0/10 (value 1.4317). The main drags were dilution share count growth pct scored 0.0/10 (value 66.192) and operating margin median 5y pct scored 3.542/10 (value 2.7091). Debt-to-TTM-revenue leverage scored 7.615/10 (value 0.5962). Diluted share count changed +66.192%/yr over 2.0 years, scored 0.0/10. Scores reflect filed financials through 2026-06-30; earnings released 2026-10-07 are not yet in a 10-Q.",
     "value": "Value score is 5.13/10, driven mainly by discount from 52w high pct scored 9.0/10 (value -69.2531) and relative ev to sales percentile scored 5.83/10 (value 58.3). The main drags were price to sales scored 3.041/10 (value 7.9173) and ev to sales scored 3.843/10 (value 6.4857).",
-    "moat": "Moat score is 5.21/10, driven mainly by roic median 5y pct scored 7.787/10 (value 16.1486) and customer concentration score scored 4.0/10 (value 4.0). The main drags were revenue percentile vs peers scored 3.0/10 (value 20.0) and customer concentration score scored 4.0/10 (value 4.0)."
+    "moat": "Moat score is 5.21/10, driven mainly by roic median 5y pct scored 7.787/10 (value 16.1486) and customer concentration score scored 4.0/10 (value 4.0). The main drags were revenue percentile vs peers scored 3.0/10 (value 20.0) and customer concentration score scored 4.0/10 (value 4.0). Moat coverage is 50% of the moat weight: missing metrics (gross margin median 5y pct, gross margin stdev 5y pts, capex intensity latest pct) were excluded and the remaining weights renormalised."
   }
 }

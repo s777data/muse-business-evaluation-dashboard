@@ -36,6 +36,27 @@ def score_section(section_cfg, metric_values):
             "missing_metrics": missing, "weights_renormalised_over": round(weight_sum, 4)}
 
 
+def apply_buyback_overvaluation_cap(value_result, dcf_upside_pct, cap=4.0, threshold_pct=-50.0):
+    """V5.3 overvaluation cap: buying back deeply overvalued stock
+    destroys per-share value, so when the DCF upside is worse than
+    `threshold_pct`, the forward-buyback sub-score is capped at `cap`
+    and the Value total recomputed from the capped sub-scores.
+    Returns True when the cap bound."""
+    subs = value_result.get("subscores", {})
+    entry = subs.get("forward_buyback_yield_pct")
+    if entry is None or dcf_upside_pct is None:
+        return False
+    if dcf_upside_pct >= threshold_pct or entry["score"] <= cap:
+        return False
+    entry["capped_from"] = entry["score"]
+    entry["score"] = cap
+    weight_sum = sum(s["weight"] for s in subs.values())
+    if weight_sum:
+        value_result["total"] = round(
+            sum(s["score"] * s["weight"] for s in subs.values()) / weight_sum, 2)
+    return True
+
+
 def concentration_score(concentration, rules):
     """Rule table from config/scoring.yaml applied to filing facts."""
     if not concentration or not concentration.get("single_customer"):
@@ -62,6 +83,24 @@ def percentile_rank(value, peer_values):
     below = sum(1 for v in vals if v < value)
     equal = sum(1 for v in vals if v == value)
     return round((below + 0.5 * equal) / len(vals) * 100, 1)
+
+
+def relative_ev_to_sales(subject_evs, curated_peer_evs, fallback_peer_evs, min_group=4):
+    """Relative EV/S cheapness percentile with source precedence:
+    the curated sector group first; when that group (subject included)
+    is below min_group, a broad-universe fallback basket; else missing.
+    Returns (percentile, basis) where basis is "curated_group",
+    "broad_universe_fallback" or None. The subject's own EV/S is
+    required — without it there is nothing to rank."""
+    if subject_evs is None:
+        return None, None
+    curated = [v for v in (curated_peer_evs or []) if v is not None]
+    if 1 + len(curated) >= min_group:
+        return cheapness_percentile(subject_evs, curated), "curated_group"
+    fallback = [v for v in (fallback_peer_evs or []) if v is not None]
+    if 1 + len(fallback) >= min_group:
+        return cheapness_percentile(subject_evs, fallback), "broad_universe_fallback"
+    return None, None
 
 
 def cheapness_percentile(value, peer_values):

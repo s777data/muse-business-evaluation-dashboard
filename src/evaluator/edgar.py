@@ -14,12 +14,12 @@ values from those rows: latest annual + current-FY year-to-date - same
 period a year earlier. (Summing the last four quarters is NOT robust: a
 fiscal Q4 is often never filed as a standalone quarter.)
 """
-from datetime import date
+from datetime import date, timedelta
 
 from .util import fetch_json
 
 BALANCE_METRICS = {"cash", "investments_current", "investments_noncurrent",
-                   "total_debt", "equity"}
+                   "total_debt", "equity", "total_liabilities"}
 UNIT_PREFERENCE = {
     "diluted_shares": ["shares"],
     "eps_diluted": ["USD/shares"],
@@ -125,6 +125,184 @@ DEBT_COMPONENT_KEYS = {"total_debt_current", "total_debt_noncurrent",
                        "total_debt_grand_total"}
 
 
+# v5 verified-zero debt: the debt resolver fails closed when no debt can
+# be determined, which is right for a filer whose debt tagging was missed
+# (the CRWV bug) but wrong for a genuinely debt-free filer (CRDO), which
+# then earns no balance-sheet credit at all. Debt may resolve to exactly
+# zero ONLY on positive evidence from the raw companyfacts:
+DEBT_CONCEPT_KEYS = ("total_debt", "total_debt_grand_total",
+                     "total_debt_current", "total_debt_noncurrent",
+                     "total_notes_current", "total_notes_noncurrent")
+
+
+def verified_zero_debt_evidence(facts, sources_cfg):
+    """Positive-evidence test for a debt-free balance sheet. Eligible
+    only when ALL hold: (1) zero balance (instant) rows for every
+    configured debt concept at every filed date; (2) no interest-expense
+    rows in the latest two fiscal years; (3) no debt proceeds/repayment
+    rows in the latest fiscal year; (4) the balance sheet is otherwise
+    complete (cash and total liabilities both present). Anything
+    ambiguous stays fail-closed in metrics.resolve_total_debt."""
+    concepts = sources_cfg["concepts"]
+    checks = {}
+    debt_rows = 0
+    for key in DEBT_CONCEPT_KEYS:
+        for concept in concepts.get(key, []):
+            rows = _unit_rows(facts, concept, "total_debt")
+            debt_rows += sum(1 for r in rows if not r.get("start"))
+    checks["debt_balance_rows"] = debt_rows
+
+    rev_series = annual_series(facts, concepts.get("revenue", []), "revenue")
+    latest_fy_end = rev_series[-1]["end"] if rev_series else None
+    checks["latest_fiscal_year_end"] = latest_fy_end
+
+    ie_rows = []
+    for concept in concepts.get("interest_expense", []):
+        ie_rows += _period_rows(_unit_rows(facts, concept, "interest_expense"))
+    if latest_fy_end:
+        cutoff = (_parse_day(latest_fy_end) - timedelta(days=731)).isoformat()
+        recent_ie = [r for r in ie_rows if r["end"] > cutoff and r["value"]]
+    else:
+        recent_ie = [r for r in ie_rows if r["value"]]
+    checks["interest_expense_rows_latest_2fy"] = len(recent_ie)
+
+    cf_rows = []
+    for key in ("debt_proceeds", "debt_repayments"):
+        for concept in concepts.get(key, []):
+            cf_rows += _period_rows(_unit_rows(facts, concept, key))
+    if latest_fy_end:
+        fy_start = (_parse_day(latest_fy_end) - timedelta(days=400)).isoformat()
+        fy_cf = [r for r in cf_rows if fy_start < r["end"] <= latest_fy_end and r["value"]]
+    else:
+        fy_cf = [r for r in cf_rows if r["value"]]
+    checks["debt_cash_flow_rows_latest_fy"] = len(fy_cf)
+
+    cash_ok = any(_latest_instant(_unit_rows(facts, c, "cash"))
+                  for c in concepts.get("cash", []))
+    liab_ok = any(_latest_instant(_unit_rows(facts, c, "total_liabilities"))
+                  for c in concepts.get("total_liabilities", []))
+    checks["cash_present"] = bool(cash_ok)
+    checks["total_liabilities_present"] = bool(liab_ok)
+    eligible = (debt_rows == 0 and not recent_ie and not fy_cf
+                and cash_ok and liab_ok)
+    return {"eligible": bool(eligible), "checks": checks}
+
+
+PERIODIC_FORMS = {"10-K", "10-Q", "10-K/A", "10-Q/A"}
+
+
+def parse_reporting(recent, ttm_end=None):
+    """Reporting block from an EDGAR submissions `recent` map.
+
+    report_date: filing date of the most recent earnings report — the
+    latest 8-K whose items include 2.02; if no such 8-K exists in the
+    recent filings list, the filing date of the latest 10-Q/10-K.
+    report_form: "8-K earnings release" when the 8-K wins, else the
+    periodic form used for the fallback.
+    financials_through: period end (reportDate) of the latest
+    10-Q/10-K whose data the run uses — the periodic filing whose
+    reportDate matches ttm_end when one is supplied and found, else
+    the periodic filing with the newest reportDate.
+    Pure function of the submissions payload so it is unit-testable
+    without the network.
+    """
+    forms = (recent or {}).get("form") or []
+    filed = (recent or {}).get("filingDate") or []
+    reports = (recent or {}).get("reportDate") or []
+    items_list = (recent or {}).get("items") or []
+    rows = []
+    for i, form in enumerate(forms):
+        rows.append({
+            "form": form,
+            "filed": filed[i] if i < len(filed) else "",
+            "report": reports[i] if i < len(reports) else "",
+            "items": items_list[i] if i < len(items_list) else "",
+        })
+    periodic = [r for r in rows if r["form"] in PERIODIC_FORMS and r["report"]]
+
+    financials_through = None
+    if periodic:
+        chosen = None
+        if ttm_end:
+            matching = [r for r in periodic if r["report"] == ttm_end]
+            if matching:
+                chosen = max(matching, key=lambda r: r["filed"])
+        if chosen is None:
+            chosen = max(periodic, key=lambda r: (r["report"], r["filed"]))
+        financials_through = chosen["report"]
+
+    earnings = [r for r in rows if r["form"] == "8-K"
+                and "2.02" in [x.strip() for x in (r["items"] or "").split(",")]]
+    if earnings:
+        latest_earn = max(earnings, key=lambda r: r["filed"])
+        return {"report_date": latest_earn["filed"] or None,
+                "report_form": "8-K earnings release",
+                "financials_through": financials_through}
+    if periodic:
+        latest_periodic = max(periodic, key=lambda r: (r["filed"], r["report"]))
+        return {"report_date": latest_periodic["filed"] or None,
+                "report_form": latest_periodic["form"],
+                "financials_through": financials_through}
+    return {"report_date": None, "report_form": None,
+            "financials_through": financials_through}
+
+
+def reporting_info(sources_cfg, cik, ttm_end=None):
+    """Fetch EDGAR submissions and build the reporting block.
+    Fail soft: any fetch or parse failure returns all-None fields
+    (financials_through falls back to ttm_end when supplied) and the
+    run proceeds without a report date."""
+    fallback = {"report_date": None, "report_form": None,
+                "financials_through": ttm_end}
+    src = sources_cfg["sources"]
+    try:
+        subs = fetch_json(src["edgar_submissions_url"].format(cik=cik),
+                          src["user_agent"], src["timeout_seconds"],
+                          src["request_delay_seconds"])
+        recent = (subs.get("filings") or {}).get("recent") or {}
+        parsed = parse_reporting(recent, ttm_end)
+        if parsed.get("financials_through") is None:
+            parsed["financials_through"] = ttm_end
+        return parsed
+    except Exception:
+        return fallback
+
+
+def post_period_earnings_release(sources_cfg, cik, period_end):
+    """Filing date of the latest Item 2.02 earnings 8-K that post-dates
+    the run's latest filed period end AND the most recent 10-Q filing —
+    i.e. earnings released but not yet in a 10-Q. Fail soft: any fetch
+    or parse failure returns None and the run proceeds unflagged."""
+    if not period_end:
+        return None
+    src = sources_cfg["sources"]
+    try:
+        subs = fetch_json(src["edgar_submissions_url"].format(cik=cik),
+                          src["user_agent"], src["timeout_seconds"],
+                          src["request_delay_seconds"])
+        recent = (subs.get("filings") or {}).get("recent") or {}
+        forms = recent.get("form") or []
+        dates = recent.get("filingDate") or []
+        items = recent.get("items") or []
+        latest_10q_filed = max((d for f, d in zip(forms, dates)
+                                if f in ("10-Q", "10-Q/A")), default=None)
+        best = None
+        for form, filed, item in zip(forms, dates, items):
+            if form != "8-K":
+                continue
+            if "2.02" not in [x.strip() for x in (item or "").split(",")]:
+                continue
+            if filed <= period_end:
+                continue
+            if latest_10q_filed and filed <= latest_10q_filed:
+                continue
+            if best is None or filed > best:
+                best = filed
+        return best
+    except Exception:
+        return None
+
+
 def annual_series(facts, candidates, metric):
     """Try every candidate concept and keep the FRESHEST series (max latest
     fiscal year-end). Companies change tags over time — e.g. NVDA's total
@@ -188,6 +366,7 @@ def get_company_metrics(sources_cfg, cik):
         families[fam_name] = fam
     debt_instants["families"] = families
     series["_debt_instants"] = debt_instants
+    series["_verified_zero_debt"] = verified_zero_debt_evidence(facts, sources_cfg)
     series["_periods"] = periods
     series["_balance_latest"] = balance_latest
     return facts.get("entityName"), series

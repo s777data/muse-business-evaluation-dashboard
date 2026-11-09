@@ -1,16 +1,23 @@
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.evaluator.scoring import (interpolate, concentration_score, score_section,
-                                   cheapness_percentile)
-from src.evaluator.dcf import fair_value, growth_path, build_wacc
+                                   cheapness_percentile, relative_ev_to_sales,
+                                   apply_buyback_overvaluation_cap)
+from src.evaluator.buybacks import extract_buyback
+from src.evaluator import prices as pricesmod
+from src.evaluator.dcf import (fair_value, growth_path, build_wacc,
+                               fcf_base_per_share, dcf_bases)
 from src.evaluator.filings import extract_concentration
 from src.evaluator.metrics import (ttm_from_periods, _latest_period_value, add_price_metrics,
                                    compute_metrics, resolve_total_debt)
 from src.evaluator import config as cfgmod
+from src.evaluator import edgar as edgarmod
+from src.evaluator import run as runmod
 
 RULES = {"base_if_no_single_customer_at_threshold": 7.0,
          "base_if_single_customer_present": 4.0,
@@ -379,6 +386,745 @@ class TestV4ValueChanges(unittest.TestCase):
         self.assertAlmostEqual(value["trailing_pe"]["weight"], 0.10)
         self.assertAlmostEqual(value["dcf_upside_pct"]["weight"], 0.20)
         self.assertAlmostEqual(value["relative_ev_to_sales_percentile"]["weight"], 0.15)
+
+
+INFLECTION_CFG = {"min_distance_pts": 15, "min_revenue_cagr_pct": 20,
+                  "max_latest_ttm_gap_pts": 12}
+
+
+def _annual_period_rows(metric_values):
+    """_periods rows carrying just the latest-FY annual row per metric,
+    enough for the TTM bridge to resolve to the annual figure."""
+    return {metric: [{"start": "2025-01-01", "end": "2025-12-31",
+                      "value": v, "filed": "2026-02-01"}]
+            for metric, v in metric_values.items()}
+
+
+def _inflection_series():
+    """CRDO-shaped: five years of hypergrowth, margins crossing from
+    negative medians to solidly positive latest-FY/TTM readings.
+    Operating margins: -30, -10, -2.5, +6.25, +12.5 (median -2.5).
+    Owner-FCF margins: -75, -27.5, -8.75, +1.875, +9.0625 (median -8.75)."""
+    ends = ["2021-12-31", "2022-12-31", "2023-12-31", "2024-12-31", "2025-12-31"]
+    series = {
+        "revenue": [{"end": e, "value": v} for e, v in zip(ends, [100.0, 200.0, 400.0, 800.0, 1600.0])],
+        "operating_income": [{"end": e, "value": v} for e, v in zip(ends, [-30.0, -20.0, -10.0, 50.0, 200.0])],
+        "operating_cash_flow": [{"end": e, "value": v} for e, v in zip(ends, [-60.0, -40.0, -20.0, 30.0, 160.0])],
+        "capex": [{"end": e, "value": 10.0} for e in ends],
+        "share_based_compensation": [{"end": e, "value": 5.0} for e in ends],
+        "_periods": _annual_period_rows({"revenue": 1600.0, "operating_income": 200.0,
+                                         "operating_cash_flow": 160.0, "capex": 10.0,
+                                         "share_based_compensation": 5.0}),
+        "_balance_latest": {},
+        "_debt_instants": {"totals": {}, "current": {}, "noncurrent": {}},
+    }
+    return series
+
+
+class TestV5InflectionBlend(unittest.TestCase):
+    """v5 Fix 1: sign-flip inflection blend on the two median margin
+    sub-scores; a positive-median cyclical must never fire."""
+
+    def test_sign_flip_fires_and_blends(self):
+        m = compute_metrics(_inflection_series(), 15.0, INFLECTION_CFG)
+        blend = m["margin_inflection_blend"]
+        self.assertIn("operating_margin_median_5y_pct", blend)
+        self.assertIn("fcf_margin_median_5y_pct", blend)
+        # Operating: median -2.5, current min(FY, TTM) = 12.5 -> blend 5.0.
+        self.assertAlmostEqual(m["operating_margin_median_5y_pct_raw"], -2.5)
+        self.assertAlmostEqual(m["operating_margin_ttm_pct"], 12.5)
+        self.assertAlmostEqual(m["operating_margin_latest_pct"], 12.5)
+        self.assertAlmostEqual(m["operating_margin_median_5y_pct"], 5.0)
+        # FCF: median -8.75, current 9.0625 -> blend 0.15625.
+        self.assertAlmostEqual(m["fcf_margin_median_5y_pct_raw"], -8.75)
+        self.assertAlmostEqual(m["fcf_margin_ttm_pct"], 9.0625)
+        self.assertAlmostEqual(m["fcf_margin_median_5y_pct"], 0.15625, places=4)
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        # The blended operating margin scores off the blended value.
+        self.assertEqual(business["subscores"]["operating_margin_median_5y_pct"]["value"], 5.0)
+
+    def test_no_config_no_blend(self):
+        m = compute_metrics(_inflection_series(), 15.0)
+        self.assertEqual(m["margin_inflection_blend"], {})
+        self.assertAlmostEqual(m["operating_margin_median_5y_pct"], -2.5)
+
+    def test_mu_shaped_cycle_does_not_fire(self):
+        # Positive median (+26.9%) with a high latest year: a cyclical
+        # peak, not an inflection. Median must survive untouched.
+        ends = ["2021-12-31", "2022-12-31", "2023-12-31", "2024-12-31", "2025-12-31"]
+        series = _inflection_series()
+        series["revenue"] = [{"end": e, "value": v} for e, v in zip(ends, [100.0, 110.0, 90.0, 130.0, 200.0])]
+        series["operating_income"] = [{"end": e, "value": v} for e, v in zip(ends, [30.0, 25.0, -10.0, 35.0, 90.0])]
+        series["_periods"] = _annual_period_rows({"revenue": 200.0, "operating_income": 90.0,
+                                                  "operating_cash_flow": 160.0, "capex": 10.0,
+                                                  "share_based_compensation": 5.0})
+        m = compute_metrics(series, 15.0, INFLECTION_CFG)
+        self.assertGreater(m["operating_margin_median_5y_pct_raw"], 0)
+        self.assertAlmostEqual(m["operating_margin_median_5y_pct"],
+                               m["operating_margin_median_5y_pct_raw"])
+        self.assertNotIn("operating_margin_median_5y_pct", m["margin_inflection_blend"])
+
+
+def _zero_debt_series(eligible):
+    return {
+        "revenue": [{"end": "2024-12-31", "value": 100.0},
+                    {"end": "2025-12-31", "value": 120.0}],
+        "cash": [{"end": "2025-12-31", "value": 50.0}],
+        "_periods": {},
+        "_balance_latest": {"cash": {"end": "2025-12-31", "value": 50.0,
+                                     "filed": "2026-02-01"}},
+        "_debt_instants": {"totals": {}, "grand_totals": {}, "families": {}},
+        "_verified_zero_debt": {"eligible": eligible,
+                                "checks": {"debt_balance_rows": 0}},
+    }
+
+
+class TestV5VerifiedZeroDebt(unittest.TestCase):
+    """v5 Fix 2: verified-zero debt resolves to exactly 0 with credit
+    for net cash and leverage, while interest coverage stays missing;
+    anything failing the evidence test stays fail-closed."""
+
+    def test_verified_zero_resolves(self):
+        m = compute_metrics(_zero_debt_series(True), 15.0)
+        self.assertEqual(m["total_debt_latest"], 0)
+        self.assertTrue(m["debt_verified_zero"])
+        self.assertFalse(m["debt_not_determinable_fail_closed"])
+        self.assertEqual(m["total_debt_resolution"]["method"], "verified_zero")
+        self.assertAlmostEqual(m["net_cash_latest"], 50.0)
+        self.assertAlmostEqual(m["leverage_debt_to_revenue_ttm"], 0.0)
+        self.assertIsNone(m["interest_coverage_ttm"])
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertEqual(business["subscores"]["leverage_debt_to_revenue_ttm"]["score"], 10)
+        self.assertIn("net_cash_to_revenue", business["subscores"])
+        self.assertIn("interest_coverage_ttm", business["missing_metrics"])
+
+    def test_unverified_stays_fail_closed(self):
+        m = compute_metrics(_zero_debt_series(False), 15.0)
+        self.assertIsNone(m["total_debt_latest"])
+        self.assertFalse(m["debt_verified_zero"])
+        self.assertTrue(m["debt_not_determinable_fail_closed"])
+
+
+def _fixture_facts(extra=None):
+    us_gaap = {
+        "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [
+            {"form": "10-K", "fp": "FY", "start": "2024-01-01", "end": "2024-12-31",
+             "val": 100.0, "filed": "2025-02-01"},
+            {"form": "10-K", "fp": "FY", "start": "2025-01-01", "end": "2025-12-31",
+             "val": 120.0, "filed": "2026-02-01"}]}},
+        "CashAndCashEquivalentsAtCarryingValue": {"units": {"USD": [
+            {"form": "10-K", "fp": "FY", "end": "2025-12-31",
+             "val": 50.0, "filed": "2026-02-01"}]}},
+        "Liabilities": {"units": {"USD": [
+            {"form": "10-K", "fp": "FY", "end": "2025-12-31",
+             "val": 80.0, "filed": "2026-02-01"}]}},
+        "ShortTermInvestments": {"units": {"USD": [
+            {"form": "10-K", "fp": "FY", "end": "2025-12-31",
+             "val": 30.0, "filed": "2026-02-01"},
+            {"form": "10-Q", "fp": "Q2", "end": "2026-06-30",
+             "val": 35.0, "filed": "2026-08-01"}]}},
+    }
+    if extra:
+        us_gaap.update(extra)
+    return {"entityName": "Fixture Co", "facts": {"us-gaap": us_gaap}}
+
+
+class TestV5EdgarEvidence(unittest.TestCase):
+    """v5 Fix 2 evidence test on raw companyfacts + the
+    ShortTermInvestments concept addition."""
+
+    def test_verified_zero_evidence_passes(self):
+        ev = edgarmod.verified_zero_debt_evidence(
+            _fixture_facts(), cfgmod.load_all()["sources"])
+        self.assertTrue(ev["eligible"])
+        self.assertEqual(ev["checks"]["debt_balance_rows"], 0)
+        self.assertEqual(ev["checks"]["interest_expense_rows_latest_2fy"], 0)
+
+    def test_interest_expense_blocks_verified_zero(self):
+        facts = _fixture_facts({"InterestExpense": {"units": {"USD": [
+            {"form": "10-K", "fp": "FY", "start": "2025-01-01", "end": "2025-12-31",
+             "val": 5.0, "filed": "2026-02-01"}]}}})
+        ev = edgarmod.verified_zero_debt_evidence(facts, cfgmod.load_all()["sources"])
+        self.assertFalse(ev["eligible"])
+        self.assertEqual(ev["checks"]["interest_expense_rows_latest_2fy"], 1)
+
+    def test_debt_balance_row_blocks_verified_zero(self):
+        facts = _fixture_facts({"LongTermDebtNoncurrent": {"units": {"USD": [
+            {"form": "10-K", "fp": "FY", "end": "2025-12-31",
+             "val": 12.0, "filed": "2026-02-01"}]}}})
+        ev = edgarmod.verified_zero_debt_evidence(facts, cfgmod.load_all()["sources"])
+        self.assertFalse(ev["eligible"])
+        self.assertEqual(ev["checks"]["debt_balance_rows"], 1)
+
+    def test_short_term_investments_extracted(self):
+        sources = cfgmod.load_all()["sources"]
+        candidates = sources["concepts"]["investments_current"]
+        self.assertIn("ShortTermInvestments", candidates)
+        series = edgarmod.annual_series(_fixture_facts(), candidates,
+                                        "investments_current")
+        self.assertEqual(series[-1]["value"], 30.0)
+        rows = edgarmod._unit_rows(_fixture_facts(), "ShortTermInvestments",
+                                   "investments_current")
+        latest = edgarmod._latest_instant(rows)
+        self.assertEqual(latest["value"], 35.0)
+        self.assertEqual(latest["end"], "2026-06-30")
+
+
+class TestReporting(unittest.TestCase):
+    """Reporting block: report_date is the latest Item 2.02 8-K filing
+    date (a newer non-earnings 8-K must NOT win); with no 2.02 8-K in
+    the recent list it falls back to the latest periodic filing date.
+    financials_through is the period end of the periodic filing whose
+    data the run uses (the TTM end)."""
+
+    def test_earnings_8k_wins_over_newer_non_earnings_8k(self):
+        # MU-shaped: a Nov 5 8-K (Item 5.02) is newer than the Sep 30
+        # earnings 8-K (Item 2.02); the 10-K period ends Sep 3.
+        recent = {
+            "form": ["8-K", "10-K", "8-K", "10-Q"],
+            "filingDate": ["2026-11-05", "2026-10-09", "2026-09-30", "2026-06-25"],
+            "reportDate": ["2026-11-02", "2026-09-03", "2026-09-30", "2026-05-28"],
+            "items": ["5.02,9.01", "", "2.02,9.01", ""],
+        }
+        out = edgarmod.parse_reporting(recent, ttm_end="2026-09-03")
+        self.assertEqual(out["report_date"], "2026-09-30")
+        self.assertEqual(out["report_form"], "8-K earnings release")
+        self.assertEqual(out["financials_through"], "2026-09-03")
+
+    def test_no_earnings_8k_falls_back_to_periodic(self):
+        recent = {
+            "form": ["10-Q", "8-K"],
+            "filingDate": ["2026-11-05", "2026-09-10"],
+            "reportDate": ["2026-09-30", "2026-09-10"],
+            "items": ["", "5.02,7.01,9.01"],
+        }
+        out = edgarmod.parse_reporting(recent, ttm_end="2026-09-30")
+        self.assertEqual(out["report_date"], "2026-11-05")
+        self.assertEqual(out["report_form"], "10-Q")
+        self.assertEqual(out["financials_through"], "2026-09-30")
+
+
+class TestV5DCF(unittest.TestCase):
+    """v5 Fix 3: Blume beta adjustment + TTM-first DCF base."""
+
+    BLUME_CFG = {"risk_free_rate_pct": 4.3, "equity_risk_premium_pct": 5.0,
+                 "pre_tax_cost_of_debt_pct": 4.5, "tax_rate_pct": 15.0,
+                 "beta_adjustment": "blume"}
+
+    def test_blume_beta_math(self):
+        w = build_wacc(self.BLUME_CFG, beta=3.0, market_cap=1000, total_debt=0)
+        # 0.67*3.0 + 0.33 = 2.34; cost of equity 4.3 + 2.34*5 = 16.0.
+        self.assertAlmostEqual(w["inputs"]["beta_raw"], 3.0)
+        self.assertAlmostEqual(w["inputs"]["beta_adjusted"], 2.34)
+        self.assertAlmostEqual(w["inputs"]["beta"], 2.34)
+        self.assertAlmostEqual(w["cost_of_equity_pct"], 16.0)
+        self.assertAlmostEqual(w["wacc_pct"], 16.0)
+
+    def test_raw_beta_without_adjustment(self):
+        cfg = {k: v for k, v in self.BLUME_CFG.items() if k != "beta_adjustment"}
+        w = build_wacc(cfg, beta=3.0, market_cap=1000, total_debt=0)
+        self.assertAlmostEqual(w["inputs"]["beta_adjusted"], 3.0)
+        self.assertAlmostEqual(w["cost_of_equity_pct"], 19.3)
+
+    def test_ttm_base_preferred(self):
+        base, source = fcf_base_per_share(
+            {"fcf_ttm": 200.0, "diluted_shares_latest_period": 50.0,
+             "fcf_latest": 90.0, "diluted_shares_latest": 45.0})
+        self.assertEqual(source, "ttm_owner_fcf")
+        self.assertAlmostEqual(base, 4.0)
+
+    def test_fy_base_fallback(self):
+        base, source = fcf_base_per_share(
+            {"fcf_ttm": None, "diluted_shares_latest_period": 50.0,
+             "fcf_latest": 90.0, "diluted_shares_latest": 45.0})
+        self.assertEqual(source, "latest_fy_owner_fcf_fallback")
+        self.assertAlmostEqual(base, 2.0)
+        self.assertEqual(fcf_base_per_share({}), (None, None))
+
+    def test_all_section_weights_sum_to_one(self):
+        scoring_cfg = cfgmod.load_all()["scoring"]
+        for section in ("business", "value", "moat"):
+            self.assertAlmostEqual(
+                sum(s["weight"] for s in scoring_cfg[section].values()), 1.0, places=9)
+
+
+class TestBetaFallbackPrecedence(unittest.TestCase):
+    """v5.1 universal beta fallback: config -> computed on the fly
+    (same OLS-vs-SPY method as the config betas) -> missing."""
+
+    def test_config_beta_wins_over_computed(self):
+        self.assertEqual(pricesmod.beta_precedence(1.5, 9.9), ("config", 1.5))
+
+    def test_computed_used_when_config_absent(self):
+        self.assertEqual(pricesmod.beta_precedence(None, 2.2554),
+                         ("computed_on_the_fly", 2.2554))
+
+    def test_missing_when_neither_available(self):
+        self.assertEqual(pricesmod.beta_precedence(None, None), ("missing", None))
+
+    @staticmethod
+    def _series(rets, start=100.0):
+        closes, value, ts = {}, start, 1_700_000_000
+        closes[ts] = value
+        for r in rets:
+            ts += 604800
+            value *= (1 + r)
+            closes[ts] = value
+        return closes
+
+    def test_ols_beta_recovers_known_slope(self):
+        spy_rets = [0.02, -0.015, 0.03, -0.005, 0.012, -0.02] * 12  # 72 points
+        stock_rets = [2 * r + 0.001 for r in spy_rets]
+        beta, n = pricesmod.ols_slope_beta(self._series(stock_rets),
+                                           self._series(spy_rets))
+        self.assertEqual(n, 72)
+        self.assertAlmostEqual(beta, 2.0, places=3)
+
+    def test_ols_beta_below_min_points_is_missing(self):
+        rets = [0.02, -0.01] * 10  # 20 return points < 52 required
+        beta, n = pricesmod.ols_slope_beta(self._series(rets), self._series(rets))
+        self.assertIsNone(beta)
+        self.assertEqual(n, 20)
+
+
+class TestRelativeEvToSalesFallback(unittest.TestCase):
+    """v5.1 universal relative-EV/S fallback: curated group first,
+    broad_universe_fallback second, missing only below the >=4 gate
+    on both (or when the subject has no EV/S to rank)."""
+
+    def test_curated_group_wins_over_fallback(self):
+        pct, basis = relative_ev_to_sales(10.0, [5.0, 20.0, 30.0], [1.0] * 12, 4)
+        self.assertEqual(basis, "curated_group")
+        self.assertIsNotNone(pct)
+
+    def test_fallback_fires_without_curated_group(self):
+        pct, basis = relative_ev_to_sales(56.17, [], [3.0, 6.0, 9.0, 12.0, 15.0], 4)
+        self.assertEqual(basis, "broad_universe_fallback")
+        # Subject is the most expensive of 6 -> (0 + 0.5) / 6 * 100
+        self.assertAlmostEqual(pct, 8.3)
+
+    def test_fallback_fires_when_curated_group_too_small(self):
+        pct, basis = relative_ev_to_sales(10.0, [5.0], [4.0, 6.0, 8.0, 12.0], 4)
+        self.assertEqual(basis, "broad_universe_fallback")
+        self.assertIsNotNone(pct)
+
+    def test_below_min_group_on_both_stays_missing(self):
+        pct, basis = relative_ev_to_sales(10.0, [5.0], [7.0], 4)
+        self.assertIsNone(pct)
+        self.assertIsNone(basis)
+
+    def test_subject_without_evs_stays_missing(self):
+        pct, basis = relative_ev_to_sales(None, [1.0, 2.0, 3.0, 4.0],
+                                          [1.0, 2.0, 3.0, 4.0], 4)
+        self.assertIsNone(pct)
+        self.assertIsNone(basis)
+
+
+class TestMarketCapMissing(unittest.TestCase):
+    """Regression (V / BRK.B): filers that report their share count
+    split by share class have no company-level diluted share count in
+    EDGAR companyfacts, so market cap is None. build_wacc used to
+    divide that raw None by EV and kill the whole run with a TypeError
+    whenever the filer also carried debt. The WACC must instead rest
+    on the cost of equity alone, flagged, and evaluate() must complete
+    with the market-cap-dependent value legs missing (renormalised) —
+    never a crash, never an invented share count."""
+
+    WACC_CFG = {"risk_free_rate_pct": 4.0, "equity_risk_premium_pct": 5.0,
+                "pre_tax_cost_of_debt_pct": 5.0, "tax_rate_pct": 20.0}
+
+    def test_wacc_market_cap_none_with_debt_does_not_crash(self):
+        w = build_wacc(self.WACC_CFG, beta=2.0, market_cap=None, total_debt=100)
+        self.assertTrue(w["market_cap_missing"])
+        self.assertEqual(w["equity_weight"], 1.0)
+        self.assertEqual(w["debt_weight"], 0.0)
+        self.assertAlmostEqual(w["wacc_pct"], w["cost_of_equity_pct"])
+
+    def test_wacc_market_cap_present_not_flagged(self):
+        w = build_wacc(self.WACC_CFG, beta=2.0, market_cap=900, total_debt=100)
+        self.assertFalse(w["market_cap_missing"])
+        self.assertAlmostEqual(w["equity_weight"], 0.9)
+
+    def test_evaluate_without_diluted_shares_completes_and_flags(self):
+        cfg = cfgmod.load_all()
+        cfg["tickers"]["tickers"]["VTST"] = {
+            "cik": "0001403161", "name": "Visa-like Test Filer",
+            "beta_source": "test fixture"}
+        # Filed metrics for a profitable, debt-carrying filer — but NO
+        # diluted share count anywhere (the V/BRK.B shape), so
+        # add_price_metrics cannot build a market cap.
+        fake_metrics = {
+            "fiscal_year_end": "2025-09-30",
+            "revenue_ttm": 40_000_000_000, "revenue_latest": 38_000_000_000,
+            "revenue_growth_latest_pct": 10.0, "revenue_cagr_5y_pct": 8.0,
+            "gross_margin_median_5y_pct": 75.0,
+            "operating_margin_median_5y_pct": 60.0,
+            "fcf_margin_median_5y_pct": 45.0,
+            "gross_margin_stdev_5y_pts": 1.0,
+            "total_debt_latest": 30_000_000_000,
+            "leverage_debt_to_revenue_ttm": 0.75,
+            "fcf_ttm": 18_000_000_000, "fcf_latest": 17_000_000_000,
+            "roic_median_5y_pct": 30.0,
+        }
+        filing = {"filing": {"filed": "2025-11-18",
+                             "accession": "0001403161-25-000001",
+                             "primary_document": "v-20250930.htm"},
+                  "concentration": {}}
+        price = {"last_close": 300.0, "high_52w": 320.0, "low_52w": 250.0,
+                 "source": "test fixture"}
+        beta_res = {"value": 1.1, "origin": "config", "points": 100,
+                    "source": "test fixture"}
+        with mock.patch.object(runmod.edgar, "get_company_metrics",
+                               return_value=("VISA-LIKE TEST FILER", {})), \
+             mock.patch.object(runmod.metmod, "compute_metrics",
+                               return_value=dict(fake_metrics)), \
+             mock.patch.object(runmod.prices, "get_price", return_value=price), \
+             mock.patch.object(runmod.prices, "resolve_beta", return_value=beta_res), \
+             mock.patch.object(runmod.filings, "get_latest_10k_concentration",
+                               return_value=filing), \
+             mock.patch.object(runmod.edgar, "post_period_earnings_release",
+                               return_value=None), \
+             mock.patch.object(runmod.edgar, "reporting_info", return_value=None):
+            result = runmod.evaluate("VTST", cfg)
+        dq = result["data_quality"]
+        self.assertTrue(dq["market_cap_missing"])
+        self.assertEqual(dq["dcf_missing_reason"], "fcf_base_missing")
+        self.assertTrue(result["dcf"]["wacc"]["market_cap_missing"])
+        self.assertEqual(result["dcf"]["wacc"]["equity_weight"], 1.0)
+        self.assertIsNone(result["dcf"].get("fair_value_per_share"))
+        for leg in ("trailing_pe", "price_to_sales", "ev_to_sales",
+                    "fcf_yield_latest_pct", "dcf_upside_pct"):
+            self.assertIn(leg, dq["missing_value_metrics"])
+        self.assertIsNotNone(result["scores"]["business"]["total"])
+
+
+def _norm_series(revenues, capexes, ocfs, sbcs, shares=10.0):
+    """Annual series whose TTM bridge resolves to the latest FY (the
+    _annual_period_rows pattern), for the v5.2 normalisation tests."""
+    ends = [f"{y}-12-31" for y in range(2021, 2021 + len(revenues))]
+    return {
+        "revenue": [{"end": e, "value": v} for e, v in zip(ends, revenues)],
+        "capex": [{"end": e, "value": v} for e, v in zip(ends, capexes)],
+        "operating_cash_flow": [{"end": e, "value": v} for e, v in zip(ends, ocfs)],
+        "share_based_compensation": [{"end": e, "value": v} for e, v in zip(ends, sbcs)],
+        "diluted_shares": [{"end": e, "value": shares} for e in ends],
+        "_periods": _annual_period_rows({
+            "revenue": revenues[-1], "capex": capexes[-1],
+            "operating_cash_flow": ocfs[-1],
+            "share_based_compensation": sbcs[-1], "diluted_shares": shares}),
+        "_balance_latest": {},
+        "_debt_instants": {"totals": {}, "current": {}, "noncurrent": {}},
+    }
+
+
+class TestV52NormalizedCapexDCF(unittest.TestCase):
+    """v5.2 (SPEC_V5.2.md): normalised-capex DCF base, fade floor,
+    3% terminal growth. The base rule: normalised capex = min(actual
+    TTM capex, median of the last-5-FY filed capex intensities x TTM
+    revenue); primary DCF base = TTM OCF - normalised capex - SBC."""
+
+    def test_normalization_binds_meta_shaped(self):
+        # Spec test 1: capex intensities 10/20/15/25/40% (median 20%)
+        # with a latest-year spike to 40 on revenue of 100.
+        m = compute_metrics(
+            _norm_series([100.0] * 5, [10.0, 20.0, 15.0, 25.0, 40.0],
+                         [50.0, 55.0, 55.0, 58.0, 60.0], [5.0] * 5), 15.0)
+        self.assertEqual(m["capex_intensity_observations"], 5)
+        self.assertAlmostEqual(m["capex_intensity_median_5y_pct"], 20.0)
+        # Normalised capex = min(40, 20% x 100) = 20; trim = 20.
+        self.assertAlmostEqual(m["normalized_capex_ttm"], 20.0)
+        self.assertTrue(m["capex_normalized_binds"])
+        self.assertAlmostEqual(m["capex_trimmed_usd"], 20.0)
+        # Actual owner FCF = 60 - 40 - 5 = 15; normalised = 60 - 20 - 5 = 35.
+        self.assertAlmostEqual(m["fcf_ttm"], 15.0)
+        self.assertAlmostEqual(m["fcf_normalized_ttm"], 35.0)
+        bases = dcf_bases(m)
+        self.assertTrue(bases["normalized_applied"])
+        self.assertFalse(bases["normalization_unavailable"])
+        self.assertEqual(bases["primary_source"], "ttm_owner_fcf_normalized_capex")
+        self.assertAlmostEqual(bases["primary_usd"], 35.0)
+        self.assertAlmostEqual(bases["primary_per_share"], 3.5)
+        self.assertAlmostEqual(bases["actual_usd"], 15.0)
+        self.assertAlmostEqual(bases["actual_per_share"], 1.5)
+
+    def test_cap_holds_asset_light(self):
+        # Spec test 2: median intensity (11%) x revenue (100) = 11 >
+        # actual capex 10 — the cap binds at actual spend, no trim,
+        # primary base is the actual base.
+        m = compute_metrics(
+            _norm_series([100.0] * 5, [10.0, 12.0, 11.0, 13.0, 10.0],
+                         [50.0, 55.0, 55.0, 58.0, 60.0], [5.0] * 5), 15.0)
+        self.assertAlmostEqual(m["capex_intensity_median_5y_pct"], 11.0)
+        self.assertAlmostEqual(m["normalized_capex_ttm"], 10.0)
+        self.assertFalse(m["capex_normalized_binds"])
+        self.assertEqual(m["capex_trimmed_usd"], 0.0)
+        self.assertAlmostEqual(m["fcf_normalized_ttm"], m["fcf_ttm"])
+        bases = dcf_bases(m)
+        self.assertFalse(bases["normalized_applied"])
+        self.assertFalse(bases["normalization_unavailable"])
+        self.assertEqual(bases["primary_source"], "ttm_owner_fcf")
+        self.assertAlmostEqual(bases["primary_per_share"], 4.5)
+        self.assertAlmostEqual(bases["primary_per_share"], bases["actual_per_share"])
+
+    def test_history_under_3_years_unavailable(self):
+        # Spec test 3: capex filed in only 2 of the last 5 fiscal
+        # years -> median unavailable, primary base = actual, flagged.
+        series = _norm_series([100.0] * 5, [10.0, 20.0, 15.0, 25.0, 40.0],
+                              [50.0, 55.0, 55.0, 58.0, 60.0], [5.0] * 5)
+        series["capex"] = [{"end": "2024-12-31", "value": 30.0},
+                            {"end": "2025-12-31", "value": 40.0}]
+        m = compute_metrics(series, 15.0)
+        self.assertEqual(m["capex_intensity_observations"], 2)
+        self.assertIsNone(m["capex_intensity_median_5y_pct"])
+        self.assertIsNone(m["normalized_capex_ttm"])
+        self.assertIsNone(m["fcf_normalized_ttm"])
+        bases = dcf_bases(m)
+        self.assertTrue(bases["normalization_unavailable"])
+        self.assertFalse(bases["normalized_applied"])
+        self.assertEqual(bases["primary_source"], "ttm_owner_fcf")
+        self.assertAlmostEqual(bases["primary_usd"], 15.0)
+
+    def _evaluate_with_metrics(self, fake_metrics):
+        cfg = cfgmod.load_all()
+        cfg["tickers"]["tickers"]["NTST"] = {
+            "cik": "0000000001", "name": "Normalization Test Filer",
+            "beta_source": "test fixture"}
+        filing = {"filing": {"filed": "2026-02-01",
+                             "accession": "0000000001-26-000001",
+                             "primary_document": "ntst-20251231.htm"},
+                  "concentration": {}}
+        price = {"last_close": 100.0, "high_52w": 120.0, "low_52w": 80.0,
+                 "source": "test fixture"}
+        beta_res = {"value": 1.0, "origin": "config", "points": 100,
+                    "source": "test fixture"}
+        with mock.patch.object(runmod.edgar, "get_company_metrics",
+                               return_value=("NORMALIZATION TEST FILER", {})), \
+             mock.patch.object(runmod.metmod, "compute_metrics",
+                               return_value=dict(fake_metrics)), \
+             mock.patch.object(runmod.prices, "get_price", return_value=price), \
+             mock.patch.object(runmod.prices, "resolve_beta", return_value=beta_res), \
+             mock.patch.object(runmod.filings, "get_latest_10k_concentration",
+                               return_value=filing), \
+             mock.patch.object(runmod.edgar, "post_period_earnings_release",
+                               return_value=None), \
+             mock.patch.object(runmod.edgar, "reporting_info", return_value=None):
+            return runmod.evaluate("NTST", cfg)
+
+    _BASE_FAKE = {
+        "fiscal_year_end": "2025-12-31",
+        "revenue_ttm": 1000.0, "revenue_latest": 1000.0,
+        "revenue_cagr_5y_pct": 10.0,
+        "diluted_shares_latest_period": 100.0, "diluted_shares_latest": 100.0,
+        "capex_ttm": 400.0, "normalized_capex_ttm": 300.0,
+        "capex_trimmed_usd": 100.0, "capex_normalized_binds": True,
+        "capex_intensity_median_5y_pct": 30.0, "capex_intensity_observations": 5,
+    }
+
+    def test_normalized_base_nonpositive_dcf_missing(self):
+        # Spec test 4: the normalised base is still non-positive ->
+        # the DCF leg stays missing (non_positive_fcf_base), and the
+        # actual base is worse, so no stress floor either.
+        fake = dict(self._BASE_FAKE, fcf_ttm=-500.0, fcf_latest=-450.0,
+                    fcf_normalized_ttm=-100.0)
+        result = self._evaluate_with_metrics(fake)
+        dq = result["data_quality"]
+        self.assertEqual(dq["dcf_missing_reason"], "non_positive_fcf_base")
+        self.assertTrue(dq["capex_normalized"])
+        self.assertIsNone(result["dcf"].get("fair_value_per_share"))
+        self.assertIsNone(result["dcf"]["stress_floor"])
+        self.assertEqual(result["dcf"]["stress_floor_missing_reason"],
+                         "non_positive_fcf_base")
+        self.assertIn("dcf_upside_pct", dq["missing_value_metrics"])
+
+    def test_actual_negative_normalized_positive_proceeds(self):
+        # Spec §2: actual base <= 0 but normalised base > 0 -> the DCF
+        # proceeds on the normalised base; the stress floor is missing.
+        fake = dict(self._BASE_FAKE, fcf_ttm=-50.0, fcf_latest=-40.0,
+                    fcf_normalized_ttm=150.0)
+        result = self._evaluate_with_metrics(fake)
+        dq = result["data_quality"]
+        self.assertIsNone(dq["dcf_missing_reason"])
+        self.assertTrue(dq["capex_normalized"])
+        self.assertEqual(result["dcf"]["primary_base"], "normalized_capex")
+        self.assertEqual(result["dcf"]["fcf_base_source"],
+                         "ttm_owner_fcf_normalized_capex")
+        self.assertAlmostEqual(result["dcf"]["fcf_per_share_base"], 1.5)
+        self.assertIsNotNone(result["dcf"].get("fair_value_per_share"))
+        self.assertNotIn("dcf_upside_pct", dq["missing_value_metrics"])
+        self.assertIsNone(result["dcf"]["stress_floor"])
+        self.assertEqual(result["dcf"]["stress_floor_missing_reason"],
+                         "non_positive_fcf_base")
+
+    def test_fade_path_floor_and_terminal(self):
+        # Spec test 5: g0 above the 15% floor fades only to the floor;
+        # g0 at/below it fades to terminal growth (3%).
+        cfg = {"projection_years": 5, "terminal_growth_pct": 3.0,
+               "growth": {"floor_pct": 0.0, "cap_pct": 25.0,
+                          "fade_floor_pct": 15.0}}
+        self.assertEqual(growth_path(cfg, 18.51),
+                         [18.51, 17.808, 17.106, 16.404, 15.702])
+        self.assertEqual(growth_path(cfg, 10.0), [10.0, 8.6, 7.2, 5.8, 4.4])
+        # Config carries the v5.2 values (Change 2 + Change 3).
+        live = cfgmod.load_all()["dcf"]["dcf"]
+        self.assertEqual(live["terminal_growth_pct"], 3.0)
+        self.assertEqual(live["growth"]["fade_floor_pct"], 15.0)
+
+    def test_terminal_value_gordon_3pct(self):
+        # Spec test 6: flat FCF/share 100, WACC 10%, terminal 3%:
+        # PV = 5y annuity + Gordon TV discounted at year 5.
+        out = fair_value(100, [0, 0, 0, 0, 0], 10, 3)
+        pv_proj = sum(100 / 1.1 ** i for i in range(1, 6))
+        pv_tv = (100 * 1.03 / (0.10 - 0.03)) / 1.1 ** 5
+        self.assertAlmostEqual(out["pv_of_projected_fcf"], pv_proj, delta=0.02)
+        self.assertAlmostEqual(out["pv_of_terminal_value"], pv_tv, delta=0.02)
+        self.assertAlmostEqual(out["fair_value_per_share"], pv_proj + pv_tv,
+                               delta=0.05)
+
+
+MU_10Q_SNIPPET = (
+    "In 2018, we announced that our Board of Directors authorized a stock repurchase "
+    "program for the discretionary repurchase of up to $10 billion (the 2018 authorization) "
+    "of our outstanding common stock through open-market purchases. "
+    "The repurchase authorization has no expiration date, does not obligate us to acquire "
+    "any common stock, and is subject to market conditions and restrictions. "
+    "Through May 28, 2026, we had repurchased an aggregate of $7.84 billion under the authorization. "
+    "During the quarter ended May 28, 2026, we did not repurchase any common stock under the "
+    "authorization and as of May 28, 2026, $2.16 billion of the authorization remained available "
+    "for the repurchase of our common stock. "
+    "Period Total number of shares purchased Average price paid per share Total number of shares "
+    "purchased as part of publicly announced plans or programs Approximate dollar value of shares "
+    "that may yet be purchased under publicly announced plans or programs (in millions) "
+    "February 27, 2026 - March 26, 2026 - $ - - March 27, 2026 - April 23, 2026 912 465.66 - "
+    "April 24, 2026 - May 28, 2026 - - - 912 $ 465.66 - $ 2,156 ITEM 5. OTHER INFORMATION"
+)
+
+MU_10K_INCREASE_SNIPPET = (
+    "In 2018, we announced that our Board of Directors authorized a stock repurchase program "
+    "for the discretionary repurchase of up to $10 billion (the 2018 authorization) of our "
+    "outstanding common stock. "
+    "On October 8, 2026, our Board of Directors authorized an increase in the amount authorized "
+    "under this stock repurchase program for a total authorization of $35.16 billion. "
+    "Any repurchases under the stock repurchase program will be made from December 9, 2026 in "
+    "accordance with our CHIPS Act direct funding agreements. "
+    "The total amount authorized under the stock repurchase program is based on the "
+    "approximately $2.16 billion that remained available for repurchase under the 2018 "
+    "authorization, plus 100% of our adjusted free cash flow, less proceeds of CHIPS Act grant "
+    "incentives and less dividends paid, for the quarter ended September 3, 2026. "
+    "Our stock repurchase program and the new authorization have no expiration date, do not "
+    "obligate us to acquire any common stock, and are subject to market conditions and "
+    "restrictions applicable under our CHIPS Act direct funding agreements. "
+    "Through September 3, 2026, we had repurchased an aggregate of $ 7.84 billion under the "
+    "2018 authorization. "
+    "We did not repurchase any common stock under the 2018 authorization in the fourth quarter "
+    "of 2026, and as of September 3, 2026, $2.16 billion of the 2018 authorization remained "
+    "available for the repurchase of our common stock."
+)
+
+
+class TestV53Buybacks(unittest.TestCase):
+    def test_mu_10q_narrative_parse(self):
+        # Spec test 1 (narrative path): remaining $2.16B, used $7.84B,
+        # program $10B, no-expiry conditions captured as history.
+        out = extract_buyback(MU_10Q_SNIPPET)
+        self.assertEqual(out["remaining_usd"], 2.16e9)
+        self.assertEqual(out["remaining_basis"], "narrative_remaining_at_period_end")
+        self.assertEqual(out["remaining_as_of"], "May 28, 2026")
+        self.assertEqual(out["cumulative_used_usd"], 7.84e9)
+        self.assertEqual(out["authorization_total_usd"], 10e9)
+        types = [h["type"] for h in out["history"]]
+        self.assertIn("program_authorized", types)
+        self.assertIn("cumulative_used", types)
+        self.assertIn("execution_note", types)
+        self.assertNotIn("buyback_remaining_not_disclosed", out["flags"])
+
+    def test_item_703_table_fallback(self):
+        # Spec test 1 (table path): narrative removed -> the Item 703
+        # final column governs; the 465.66 withholding avg price and
+        # the 912 withheld shares are never the remaining figure.
+        text = MU_10Q_SNIPPET.replace(
+            "During the quarter ended May 28, 2026, we did not repurchase any common stock under the "
+            "authorization and as of May 28, 2026, $2.16 billion of the authorization remained available "
+            "for the repurchase of our common stock. ", "")
+        out = extract_buyback(text)
+        self.assertEqual(out["remaining_usd"], 2156e6)
+        self.assertEqual(out["remaining_basis"], "item_703_table_may_yet_be_purchased")
+
+    def test_post_period_increase_supersedes(self):
+        # Spec test 2: the Oct 8, 2026 increase (with its construction
+        # sentence) supersedes the period-end $2.16B; effective-from
+        # Dec 9, 2026 captured.
+        out = extract_buyback(MU_10K_INCREASE_SNIPPET)
+        self.assertEqual(out["remaining_usd"], 35.16e9)
+        self.assertEqual(out["authorization_date"], "October 8, 2026")
+        self.assertEqual(out["effective_from"], "December 9, 2026")
+        self.assertIsNotNone(out["construction_quote"])
+        types = [h["type"] for h in out["history"]]
+        self.assertIn("authorization_increased", types)
+        self.assertIn("remaining_at_period_end", types)
+
+    def test_increase_without_construction_fails_closed(self):
+        # Spec test 3 (the trap): an increase figure with NO
+        # construction sentence is ambiguous total-vs-remaining and
+        # must not be scored; the period-end narrative still governs.
+        text = MU_10K_INCREASE_SNIPPET.replace(
+            "The total amount authorized under the stock repurchase program is based on the "
+            "approximately $2.16 billion that remained available for repurchase under the 2018 "
+            "authorization, plus 100% of our adjusted free cash flow, less proceeds of CHIPS Act grant "
+            "incentives and less dividends paid, for the quarter ended September 3, 2026. ", "")
+        out = extract_buyback(text)
+        self.assertIn("buyback_total_remaining_ambiguous", out["flags"])
+        self.assertEqual(out["remaining_usd"], 2.16e9)
+        self.assertEqual(out["remaining_basis"], "narrative_remaining_at_period_end")
+
+    def test_no_disclosure_fails_closed(self):
+        out = extract_buyback("Revenue grew strongly this year. Cash was $5 billion.")
+        self.assertIsNone(out["remaining_usd"])
+        self.assertIn("buyback_remaining_not_disclosed", out["flags"])
+
+    def test_share_denominated_not_scored(self):
+        # Spec test 4: share-denominated authorization is stored as
+        # shares, flagged, and never converted at market price.
+        text = ("In 2024, our Board of Directors authorized a stock repurchase program "
+                "for the discretionary repurchase of up to 50,000,000 shares of our "
+                "outstanding common stock.")
+        out = extract_buyback(text)
+        self.assertIsNone(out["remaining_usd"])
+        self.assertIn("buyback_remaining_share_denominated", out["flags"])
+
+    def test_anchors_interpolation_mu(self):
+        # Spec test 5a: 4.458% -> 6.048 on the config anchors.
+        cfg = cfgmod.load_all()["scoring"]["value"]["forward_buyback_yield_pct"]
+        self.assertAlmostEqual(interpolate(4.458, cfg["anchors"]), 6.048, places=2)
+        self.assertEqual(cfg["weight"], 0.05)
+
+    def test_overvaluation_cap(self):
+        # Spec test 5b: DCF upside -60% with a 15% yield caps at 4.0.
+        cfg = cfgmod.load_all()["scoring"]
+        res = score_section(cfg["value"], {"forward_buyback_yield_pct": 15.0})
+        self.assertAlmostEqual(res["subscores"]["forward_buyback_yield_pct"]["score"], 9.25)
+        capped = apply_buyback_overvaluation_cap(res, -60.0)
+        self.assertTrue(capped)
+        self.assertEqual(res["subscores"]["forward_buyback_yield_pct"]["score"], 4.0)
+        self.assertEqual(res["subscores"]["forward_buyback_yield_pct"]["capped_from"], 9.25)
+        res2 = score_section(cfg["value"], {"forward_buyback_yield_pct": 15.0})
+        self.assertFalse(apply_buyback_overvaluation_cap(res2, 43.08))
+
+    def test_mu_value_total_matches_spec(self):
+        # Spec test 7 (arithmetic, on the V5.2 run's own sub-scores):
+        # V5.3 Value for MU = 6.88 with Business/Moat untouched.
+        subs = {"trailing_pe": (9.28, 8.287), "price_to_sales": (5.92, 4.219),
+                "ev_to_sales": (5.41, 4.561), "fcf_yield_latest_pct": (7.31, 8.480),
+                "dcf_upside_pct": (43.08, 7.585), "discount_from_52w_high_pct": (-43.14, 7.314),
+                "relative_ev_to_sales_percentile": (72.2, 7.220)}
+        cfg = cfgmod.load_all()["scoring"]["value"]
+        metrics = {k: v[0] for k, v in subs.items()}
+        metrics["forward_buyback_yield_pct"] = 4.458
+        res = score_section(cfg, metrics)
+        for k, (_, sc) in subs.items():
+            self.assertAlmostEqual(res["subscores"][k]["score"], sc, places=2, msg=k)
+        self.assertAlmostEqual(res["subscores"]["forward_buyback_yield_pct"]["score"],
+                               6.048, places=2)
+        self.assertAlmostEqual(res["total"], 6.88, places=2)
 
 
 if __name__ == "__main__":
