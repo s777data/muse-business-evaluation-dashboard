@@ -7,7 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.evaluator.scoring import (interpolate, concentration_score, score_section,
                                    cheapness_percentile, relative_ev_to_sales,
-                                   apply_buyback_overvaluation_cap)
+                                   apply_buyback_overvaluation_cap,
+                                   growth_band_score, gav_label, gav_code)
 from src.evaluator.buybacks import extract_buyback
 from src.evaluator import prices as pricesmod
 from src.evaluator.dcf import (fair_value, growth_path, build_wacc,
@@ -1551,6 +1552,86 @@ class TestBuybackExtractorR3(unittest.TestCase):
         out = extract_buyback(strip_html(html_doc), raw_html=html_doc,
                               period_end="2026-09-30")
         self.assertIsNone(out["remaining_usd"])
+
+
+class TestGavCode(unittest.TestCase):
+    """GAV-Code (2026-11-09): the code-derived GAV — growth band score
+    from TTM revenue growth + the engine's own Value, no model scores."""
+
+    def test_band_edges(self):
+        cases = [(100.0, 95), (60.5, 95), (60.0, 80), (40.74, 80), (35.0, 65),
+                 (20.27, 65), (20.0, 50), (19.84, 50), (10.14, 50), (10.0, 35),
+                 (8.93, 35), (5.0, 20), (4.89, 20), (0.5, 20), (0.0, 5),
+                 (-12.0, 5), (None, None)]
+        for growth, expected in cases:
+            self.assertEqual(growth_band_score(growth), expected, f"g={growth}")
+
+    def test_labels(self):
+        self.assertTrue(gav_label(85).startswith("🚀💰 Elite"))
+        self.assertTrue(gav_label(84.9).startswith("📈💵 Strong"))
+        self.assertTrue(gav_label(55).startswith("⚖️🪙 Fair"))
+        self.assertTrue(gav_label(40).startswith("📉💸 Thin"))
+        self.assertTrue(gav_label(39.9).startswith("🧊🚫 None"))
+        self.assertIsNone(gav_label(None))
+
+    def test_composition(self):
+        out = gav_code(40.74, 6.88)   # growth band 80, Value 68.8
+        self.assertEqual(out["growth_score"], 80)
+        self.assertEqual(out["score"], 74.4)
+        self.assertTrue(out["label"].startswith("📈💵 Strong"))
+        self.assertIsNone(out["missing_reason"])
+
+    def test_fail_closed(self):
+        self.assertEqual(gav_code(None, 5.0)["missing_reason"],
+                         "ttm_revenue_growth_missing")
+        self.assertIsNone(gav_code(None, 5.0)["score"])
+        self.assertEqual(gav_code(20.0, None)["missing_reason"],
+                         "value_score_missing")
+        self.assertEqual(gav_code(None, None)["missing_reason"],
+                         "ttm_revenue_growth_and_value_missing")
+
+    # Synthetic filer: FY23 rev 100, FY24 rev 130; Q3 YTDs 70 / 90 / 120.
+    ROWS = [
+        {"start": "2023-01-01", "end": "2023-09-30", "value": 70, "filed": "2023-11-01"},
+        {"start": "2023-01-01", "end": "2023-12-31", "value": 100, "filed": "2024-02-01"},
+        {"start": "2024-01-01", "end": "2024-09-30", "value": 90, "filed": "2024-11-01"},
+        {"start": "2024-01-01", "end": "2024-12-31", "value": 130, "filed": "2025-02-01"},
+        {"start": "2025-01-01", "end": "2025-09-30", "value": 120, "filed": "2025-11-01"},
+    ]
+
+    def _series(self, rows):
+        return {"revenue": [{"end": "2023-12-31", "value": 100},
+                            {"end": "2024-12-31", "value": 130}],
+                "_periods": {"revenue": rows}, "_balance_latest": {}}
+
+    def test_ttm_as_of_cap_rebuilds_prior_year(self):
+        cur = ttm_from_periods(self.ROWS, "2024-01-01", "2024-12-31", 130)
+        self.assertEqual(cur["value"], 160)            # 130 + 120 - 90
+        prior = ttm_from_periods(self.ROWS, "2023-01-01", "2023-12-31", 100,
+                                 as_of_end="2024-10-20")
+        self.assertEqual(prior["value"], 120)          # 100 + 90 - 70
+        self.assertEqual(prior["ttm_end"], "2024-09-30")
+
+    def test_ttm_growth_kpi(self):
+        m = compute_metrics(self._series(self.ROWS), 21.0)
+        self.assertEqual(m["revenue_ttm"], 160)
+        self.assertEqual(m["revenue_ttm_prior"], 120)
+        self.assertEqual(m["revenue_ttm_prior_end"], "2024-09-30")
+        self.assertAlmostEqual(m["revenue_ttm_growth_pct"], 33.333, places=2)
+        self.assertEqual(growth_band_score(m["revenue_ttm_growth_pct"]), 65)
+
+    def test_ttm_growth_fail_closed_without_prior_bridge(self):
+        rows = [r for r in self.ROWS if r["end"] != "2023-09-30"]
+        m = compute_metrics(self._series(rows), 21.0)
+        self.assertEqual(m["revenue_ttm"], 160)
+        self.assertIsNone(m["revenue_ttm_prior"])
+        self.assertIsNone(m["revenue_ttm_growth_pct"])
+
+    def test_ttm_growth_fail_closed_single_annual_year(self):
+        series = self._series(self.ROWS)
+        series["revenue"] = [{"end": "2024-12-31", "value": 130}]
+        m = compute_metrics(series, 21.0)
+        self.assertIsNone(m["revenue_ttm_growth_pct"])
 
 
 if __name__ == "__main__":

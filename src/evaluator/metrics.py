@@ -40,12 +40,16 @@ def _day(s):
     return date(y, m, d)
 
 
-def ttm_from_periods(rows, annual_start, annual_end, annual_value):
+def ttm_from_periods(rows, annual_start, annual_end, annual_value, as_of_end=None):
     """TTM from filed duration rows for one flow metric.
 
     rows: [{start, end, value, filed}] covering annual + interim periods.
     Returns a dict: value (None if a post-annual YTD exists but the
     prior-year YTD cannot be found), basis, and the components used.
+
+    as_of_end (optional): ignore interim rows ending after this date —
+    used to rebuild the TTM as it stood one year earlier (the prior-year
+    TTM behind revenue_ttm_growth_pct). Default None = current behaviour.
     """
     out = {"value": None, "basis": "unavailable", "annual_value": annual_value,
            "annual_end": annual_end, "ytd_current": None, "ytd_prior": None,
@@ -53,7 +57,9 @@ def ttm_from_periods(rows, annual_start, annual_end, annual_value):
     if annual_value is None or not rows:
         return out
     a_end = _day(annual_end)
-    post = [r for r in rows if _day(r["end"]) > a_end]
+    cap = _day(as_of_end) if as_of_end else None
+    post = [r for r in rows if _day(r["end"]) > a_end
+            and (cap is None or _day(r["end"]) <= cap)]
     if not post:
         out.update(value=annual_value, basis="annual_only_no_interim_filings_since_fy_end")
         return out
@@ -248,6 +254,42 @@ def compute_metrics(series, tax_rate_pct, inflection_cfg=None):
         ttm_details[out_key] = t
     out["ttm_details"] = ttm_details
     out["ttm_end"] = (ttm_details.get("revenue") or {}).get("ttm_end")
+
+    # Prior-year TTM revenue and TTM growth (GAV-Code input): rebuild the
+    # TTM as it stood at the same point of the previous fiscal year, using
+    # the same bridge anchored on the previous annual period with the
+    # interim search capped at the matching date (+20d tolerance, the
+    # same slack the bridge itself allows). Fail-closed: any missing
+    # piece, a non-positive prior TTM, or TTM ends that are not roughly
+    # a year apart (300-430 days) leaves the growth missing.
+    out["revenue_ttm_prior"] = None
+    out["revenue_ttm_prior_end"] = None
+    out["revenue_ttm_growth_pct"] = None
+    rev_ttm = out.get("revenue_ttm")
+    if rev_ttm is not None and len(rev) >= 2:
+        prev_annual = rev[-2]
+        rev_basis = (ttm_details.get("revenue") or {}).get("basis")
+        prior_val = prior_end = None
+        if rev_basis == "annual_only_no_interim_filings_since_fy_end":
+            prior_val, prior_end = prev_annual["value"], prev_annual["end"]
+        elif out.get("ttm_end"):
+            p_start = _annual_start(periods.get("revenue"), prev_annual["end"])
+            if p_start is not None:
+                offset = (_day(out["ttm_end"]) - _day(latest_rev["end"])).days
+                cap = (_day(prev_annual["end"])
+                       + timedelta(days=offset + 20)).isoformat()
+                t_prior = ttm_from_periods(periods.get("revenue", []), p_start,
+                                           prev_annual["end"],
+                                           prev_annual["value"],
+                                           as_of_end=cap)
+                if t_prior["value"] is not None:
+                    gap = (_day(out["ttm_end"]) - _day(t_prior["ttm_end"])).days
+                    if 300 <= gap <= 430:
+                        prior_val, prior_end = t_prior["value"], t_prior["ttm_end"]
+        if prior_val:
+            out["revenue_ttm_prior"] = prior_val
+            out["revenue_ttm_prior_end"] = prior_end
+            out["revenue_ttm_growth_pct"] = (rev_ttm / prior_val - 1) * 100
 
     # TTM FCF is SBC-adjusted owner FCF (v3): operating cash flow adds
     # stock comp back, so raw OCF - capex treats equity pay as free.

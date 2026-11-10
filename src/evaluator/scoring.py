@@ -117,3 +117,65 @@ def cheapness_percentile(value, peer_values):
     higher = sum(1 for v in vals if v > value)
     ties = sum(1 for v in group if v == value)
     return round((higher + 0.5 * ties) / len(group) * 100, 1)
+
+
+# --- GAV-Code (2026-11-09): a fully code-derived Growth-Adjusted Value ---
+# The heatmap GAV blends Value across four scorers, three of them models
+# (Muse DD / Gemini / OpenAI) — not reproducible in a zero-token daily
+# run. GAV-Code keeps the identical formula shape and band tables but
+# takes Value from this engine alone:
+#     GAV-Code = 0.5 x growth band score (TTM revenue growth, filed data)
+#              + 0.5 x engine Value (0-10 rescaled to 0-100)
+# Fail-closed: a missing TTM growth or a missing Value total leaves the
+# score None with the reason recorded — never estimated.
+GAV_GROWTH_BANDS = [(60, 95), (35, 80), (20, 65), (10, 50), (5, 35), (0, 20)]
+GAV_LABELS = [(85, "🚀💰 Elite — rocket growth, bag of value"),
+              (70, "📈💵 Strong — climbing growth, solid cash"),
+              (55, "⚖️🪙 Fair — balanced growth, a coin’s worth of value"),
+              (40, "📉💸 Thin — sliding growth, money leaking"),
+              (0, "🧊🚫 None — frozen growth, no value")]
+
+
+def growth_band_score(growth_pct):
+    """Band score for a TTM revenue growth percentage: strictly above
+    +60 -> 95, +35..60 -> 80, +20..35 -> 65, +10..20 -> 50, +5..10 -> 35,
+    0..+5 -> 20, zero or negative -> 5. None in, None out."""
+    if growth_pct is None:
+        return None
+    for threshold, score in GAV_GROWTH_BANDS:
+        if growth_pct > threshold:
+            return score
+    return 5
+
+
+def gav_label(score):
+    """Full band label for a 0-100 GAV(-Code) score, matching the
+    heatmap wording. None in, None out."""
+    if score is None:
+        return None
+    for threshold, label in GAV_LABELS:
+        if score >= threshold:
+            return label
+    return None
+
+
+def gav_code(ttm_revenue_growth_pct, value_total):
+    """Compose GAV-Code from the TTM revenue growth percentage and the
+    engine Value total (0-10). Returns the block stored in run output:
+    score (0-100, 1dp) + label + components + missing_reason."""
+    growth_score = growth_band_score(ttm_revenue_growth_pct)
+    missing = None
+    if growth_score is None:
+        missing = "ttm_revenue_growth_missing"
+    if value_total is None:
+        missing = "value_score_missing" if missing is None \
+            else "ttm_revenue_growth_and_value_missing"
+    score = None
+    if missing is None:
+        score = round(0.5 * growth_score + 0.5 * value_total * 10, 1)
+    return {"score": score, "label": gav_label(score),
+            "growth_score": growth_score,
+            "ttm_revenue_growth_pct": ttm_revenue_growth_pct,
+            "value_score": value_total,
+            "weights": {"growth": 0.5, "value": 0.5},
+            "missing_reason": missing}

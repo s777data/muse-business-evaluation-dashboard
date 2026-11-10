@@ -430,6 +430,8 @@ def evaluate(symbol, cfg):
         "fcf_series_by_year": m.get("fcf_series_by_year"),
         "fcf_raw_series_by_year": m.get("fcf_raw_series_by_year"),
         "scores": {"business": business, "value": value, "moat": moat},
+        "gav_code": scoring.gav_code(m.get("revenue_ttm_growth_pct"),
+                                     value.get("total")),
         "dcf": {"fcf_per_share_base": round(fcf_base, 4) if fcf_base else None,
                 "fcf_base_source": fcf_base_source,
                 "fcf_base_usd": fcf_base_usd,
