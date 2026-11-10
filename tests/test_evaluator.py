@@ -15,7 +15,8 @@ from src.evaluator.dcf import (fair_value, growth_path, build_wacc,
                                fcf_base_per_share, dcf_bases)
 from src.evaluator.filings import extract_concentration, strip_html
 from src.evaluator.metrics import (ttm_from_periods, _latest_period_value, add_price_metrics,
-                                   compute_metrics, resolve_total_debt)
+                                   compute_metrics, resolve_total_debt,
+                                   _quarterly_sum_ttm_growth)
 from src.evaluator import config as cfgmod
 from src.evaluator import edgar as edgarmod
 from src.evaluator import class_shares as classsharesmod
@@ -1618,20 +1619,278 @@ class TestGavCode(unittest.TestCase):
         self.assertEqual(m["revenue_ttm_prior"], 120)
         self.assertEqual(m["revenue_ttm_prior_end"], "2024-09-30")
         self.assertAlmostEqual(m["revenue_ttm_growth_pct"], 33.333, places=2)
+        self.assertEqual(m["revenue_ttm_growth_source"], "ttm_bridge")
         self.assertEqual(growth_band_score(m["revenue_ttm_growth_pct"]), 65)
 
-    def test_ttm_growth_fail_closed_without_prior_bridge(self):
+    def test_ttm_growth_fy_annual_fallback_without_prior_bridge(self):
+        # Was "fail closed without prior bridge" before the fallback
+        # chain: with the prior-year YTD row removed the bridge cannot
+        # rebuild the prior TTM and there are no standalone quarters,
+        # so the chain lands on FY-annual YoY (FY24 130 vs FY23 100),
+        # flagged as such — never presented as a TTM figure.
         rows = [r for r in self.ROWS if r["end"] != "2023-09-30"]
         m = compute_metrics(self._series(rows), 21.0)
         self.assertEqual(m["revenue_ttm"], 160)
-        self.assertIsNone(m["revenue_ttm_prior"])
-        self.assertIsNone(m["revenue_ttm_growth_pct"])
+        self.assertEqual(m["revenue_ttm_prior"], 100)
+        self.assertEqual(m["revenue_ttm_prior_end"], "2023-12-31")
+        self.assertAlmostEqual(m["revenue_ttm_growth_pct"], 30.0, places=2)
+        self.assertEqual(m["revenue_ttm_growth_source"], "fy_annual")
 
     def test_ttm_growth_fail_closed_single_annual_year(self):
         series = self._series(self.ROWS)
         series["revenue"] = [{"end": "2024-12-31", "value": 130}]
         m = compute_metrics(series, 21.0)
         self.assertIsNone(m["revenue_ttm_growth_pct"])
+        self.assertIsNone(m["revenue_ttm_growth_source"])
+
+
+class TestRevenueConceptMerge(unittest.TestCase):
+    """Revenue series merge across candidate concepts (edgar.py):
+    filers migrate revenue tags — sometimes mid-stream, leaving the
+    freshest annual rows under one tag and the interim period rows
+    under another. The merged series takes each period from the
+    freshest concept that reports it; periods are never summed."""
+
+    CANDS = ["RevenueFromContractWithCustomerExcludingAssessedTax",
+             "SalesRevenueNet", "Revenues",
+             "RevenueFromContractWithCustomerIncludingAssessedTax"]
+
+    @staticmethod
+    def _facts(concept_rows):
+        return {"facts": {"us-gaap": {
+            c: {"units": {"USD": rows}} for c, rows in concept_rows.items()}}}
+
+    @staticmethod
+    def _fy(start, end, val, filed):
+        return {"form": "10-K", "fp": "FY", "start": start, "end": end,
+                "val": val, "filed": filed}
+
+    def test_tag_migration_merges_annual_and_periods(self):
+        # APLD-shaped: FY2026 annual only under Revenues; the interim
+        # history only under the Excluding tag.
+        facts = self._facts({
+            "Revenues": [
+                self._fy("2024-06-01", "2025-05-31", 101, "2025-08-01"),
+                self._fy("2025-06-01", "2026-05-31", 160, "2026-08-01")],
+            "RevenueFromContractWithCustomerExcludingAssessedTax": [
+                self._fy("2024-06-01", "2025-05-31", 100, "2025-08-01"),
+                {"form": "10-Q", "fp": "Q1", "start": "2025-06-01",
+                 "end": "2025-08-31", "val": 40, "filed": "2025-10-01"},
+                {"form": "10-Q", "fp": "Q3", "start": "2025-06-01",
+                 "end": "2026-02-28", "val": 110, "filed": "2026-04-01"}]})
+        annual, periods = edgarmod._merged_revenue_series(facts, self.CANDS)
+        # Freshest concept (Revenues) wins the shared FY2025 period.
+        self.assertEqual([(r["end"], r["value"]) for r in annual],
+                         [("2025-05-31", 101), ("2026-05-31", 160)])
+        keys = {(r["start"], r["end"]) for r in periods}
+        self.assertIn(("2025-06-01", "2025-08-31"), keys)
+        self.assertIn(("2025-06-01", "2026-02-28"), keys)
+
+    def test_duplicate_period_selected_not_summed(self):
+        facts = self._facts({
+            "Revenues": [
+                self._fy("2025-01-01", "2025-12-31", 500, "2026-02-01"),
+                {"form": "10-Q", "fp": "Q1", "start": "2026-01-01",
+                 "end": "2026-03-31", "val": 999, "filed": "2026-05-01"}],
+            "RevenueFromContractWithCustomerExcludingAssessedTax": [
+                {"form": "10-Q", "fp": "Q1", "start": "2026-01-01",
+                 "end": "2026-03-31", "val": 40, "filed": "2026-05-01"}]})
+        _, periods = edgarmod._merged_revenue_series(facts, self.CANDS)
+        dup = [r for r in periods
+               if (r["start"], r["end"]) == ("2026-01-01", "2026-03-31")]
+        self.assertEqual(len(dup), 1)
+        self.assertEqual(dup[0]["value"], 999)  # freshest concept wins
+
+    def test_stale_concept_annual_not_backfilled(self):
+        # URGN/PGEN-shaped: Revenues dead after 2018, the Excluding
+        # tag current. The annual series stays the primary's exactly
+        # (no cross-tag annual splicing — medians/CAGR alignment is
+        # built on it); only period rows may be gap-filled.
+        facts = self._facts({
+            "Revenues": [self._fy("2017-01-01", "2017-12-31", 5, "2018-03-01"),
+                         self._fy("2018-01-01", "2018-12-31", 7, "2019-03-01")],
+            "RevenueFromContractWithCustomerExcludingAssessedTax": [
+                self._fy("2024-01-01", "2024-12-31", 80, "2025-03-01"),
+                self._fy("2025-01-01", "2025-12-31", 110, "2026-03-01")]})
+        annual, _ = edgarmod._merged_revenue_series(facts, self.CANDS)
+        self.assertEqual([(r["end"], r["value"]) for r in annual],
+                         [("2024-12-31", 80), ("2025-12-31", 110)])
+
+    def test_coexisting_live_tags_never_mix(self):
+        # BRK-shaped: Revenues (total revenues) and contract revenue
+        # are BOTH live through the same latest fiscal year at
+        # different values — different scopes, not a migration. The
+        # merge must return the primary (config-order-first on the
+        # annual-end tie) series untouched.
+        facts = self._facts({
+            "RevenueFromContractWithCustomerExcludingAssessedTax": [
+                self._fy("2024-01-01", "2024-12-31", 240, "2025-03-01"),
+                self._fy("2025-01-01", "2025-12-31", 247, "2026-03-01")],
+            "Revenues": [
+                self._fy("2024-01-01", "2024-12-31", 371, "2025-03-01"),
+                self._fy("2025-01-01", "2025-12-31", 372, "2026-03-01"),
+                {"form": "10-Q", "fp": "Q3", "start": "2026-01-01",
+                 "end": "2026-09-30", "val": 280, "filed": "2026-11-01"}]})
+        annual, periods = edgarmod._merged_revenue_series(facts, self.CANDS)
+        self.assertEqual([(r["end"], r["value"]) for r in annual],
+                         [("2024-12-31", 240), ("2025-12-31", 247)])
+        self.assertNotIn(("2026-01-01", "2026-09-30"),
+                         {(r["start"], r["end"]) for r in periods})
+
+    def test_single_concept_filer_unchanged(self):
+        rows = [self._fy("2024-01-01", "2024-12-31", 80, "2025-03-01"),
+                self._fy("2025-01-01", "2025-12-31", 110, "2026-03-01"),
+                {"form": "10-Q", "fp": "Q1", "start": "2026-01-01",
+                 "end": "2026-03-31", "val": 30, "filed": "2026-05-01"}]
+        facts = self._facts({"Revenues": rows})
+        annual, periods = edgarmod._merged_revenue_series(facts, self.CANDS)
+        self.assertEqual(annual, edgarmod._annual_from_rows(rows, "revenue"))
+        self.assertEqual(periods, edgarmod._period_rows(rows))
+
+
+class TestGavGrowthFallbackChain(unittest.TestCase):
+    """GAV-Code growth fallback chain (metrics.py): ttm_bridge ->
+    quarterly_sum -> fy_annual, source recorded on the KPI and carried
+    into the gav_code block."""
+
+    QUARTERS = [
+        ("2024-07-01", "2024-09-30", 10), ("2024-10-01", "2024-12-31", 10),
+        ("2025-01-01", "2025-03-31", 10), ("2025-04-01", "2025-06-30", 10),
+        ("2025-07-01", "2025-09-30", 15), ("2025-10-01", "2025-12-31", 15),
+        ("2026-01-01", "2026-03-31", 15), ("2026-04-01", "2026-06-30", 15)]
+
+    def _series(self, quarter_rows):
+        periods = [{"start": s, "end": e, "value": v, "filed": "2026-08-01"}
+                   for s, e, v in quarter_rows]
+        # FY2024 annual-duration row only: no annual row ends at the
+        # FY2025 annual end in the period rows, so the TTM bridge
+        # cannot anchor and revenue_ttm stays None.
+        periods.append({"start": "2024-01-01", "end": "2024-12-31",
+                        "value": 40, "filed": "2025-02-01"})
+        return {"revenue": [{"end": "2024-12-31", "value": 40},
+                            {"end": "2025-12-31", "value": 50}],
+                "_periods": {"revenue": periods}, "_balance_latest": {}}
+
+    def test_quarterly_sum_fires_and_beats_fy_annual(self):
+        m = compute_metrics(self._series(self.QUARTERS), 21.0)
+        self.assertIsNone(m.get("revenue_ttm"))
+        # Latest 4 quarters (15*4=60) vs prior 4 (10*4=40) -> +50%;
+        # FY-annual would say +25%, so 50 proves the chain order.
+        self.assertAlmostEqual(m["revenue_ttm_growth_pct"], 50.0, places=2)
+        self.assertEqual(m["revenue_ttm_prior"], 40)
+        self.assertEqual(m["revenue_ttm_prior_end"], "2025-06-30")
+        self.assertEqual(m["revenue_ttm_growth_source"], "quarterly_sum")
+
+    def test_quarterly_sum_gap_fails_closed_to_fy_annual(self):
+        rows = [q for q in self.QUARTERS if q[1] != "2025-03-31"]
+        m = compute_metrics(self._series(rows), 21.0)
+        self.assertAlmostEqual(m["revenue_ttm_growth_pct"], 25.0, places=2)
+        self.assertEqual(m["revenue_ttm_growth_source"], "fy_annual")
+
+    def test_quarterly_helper_rejects_gap(self):
+        rows = [{"start": s, "end": e, "value": v, "filed": "2026-08-01"}
+                for s, e, v in self.QUARTERS]
+        rows[0] = {"start": "2023-07-01", "end": "2023-09-30", "value": 10,
+                   "filed": "2026-08-01"}  # ~2y gap to the next quarter
+        self.assertIsNone(_quarterly_sum_ttm_growth(rows))
+
+    def test_quarterly_helper_rejects_ytd_rows(self):
+        rows = [{"start": "2025-01-01", "end": "2025-09-30", "value": 100,
+                 "filed": "2025-11-01"},
+                {"start": "2026-01-01", "end": "2026-09-30", "value": 150,
+                 "filed": "2026-11-01"}]
+        self.assertIsNone(_quarterly_sum_ttm_growth(rows))
+
+    def test_gav_code_carries_growth_source(self):
+        out = gav_code(30.0, 5.0, "fy_annual")
+        self.assertEqual(out["growth_source"], "fy_annual")
+        self.assertIsNone(gav_code(30.0, 5.0)["growth_source"])
+
+
+class TestZeroRevenuePriceLegs(unittest.TestCase):
+    """add_price_metrics: filed-zero (or missing) revenue must not
+    suppress the revenue-independent legs (TNGX: TTM revenue filed as
+    0 lost market cap, FCF yield and even the pure-price 52-week
+    discount). P/S and EV/S stay missing on a zero base."""
+
+    PRICE = {"last_close": 10.0, "high_52w": 20.0, "low_52w": 5.0}
+
+    def _base(self, **kw):
+        m = {"diluted_shares_latest_period": 200, "diluted_shares_latest": 190,
+             "net_cash_latest": 50, "eps_diluted_ttm": -1.5, "fcf_ttm": -30}
+        m.update(kw)
+        return m
+
+    def test_zero_revenue_keeps_price_legs(self):
+        m = add_price_metrics(self._base(revenue_ttm=0, revenue_latest=100),
+                              self.PRICE)
+        self.assertEqual(m["market_cap"], 2000)
+        self.assertEqual(m["discount_from_52w_high_pct"], -50.0)
+        self.assertEqual(m["fcf_yield_latest_pct"], -1.5)
+        self.assertIsNone(m.get("price_to_sales"))
+        self.assertIsNone(m.get("ev_to_sales"))
+        self.assertIsNone(m["trailing_pe"])  # negative-EPS guard intact
+        self.assertTrue(m["negative_trailing_pe_not_scored"])
+
+    def test_missing_revenue_still_gets_market_cap(self):
+        m = add_price_metrics(self._base(revenue_ttm=None, revenue_latest=None),
+                              self.PRICE)
+        self.assertEqual(m["market_cap"], 2000)
+        self.assertIsNone(m.get("price_to_sales"))
+
+    def test_no_shares_still_returns_early(self):
+        m = add_price_metrics({"revenue_ttm": 100}, self.PRICE)
+        self.assertNotIn("market_cap", m)
+
+
+class TestBasicSharesFallback(unittest.TestCase):
+    """Basic-shares fallback (edgar.py): a filer tagging only
+    WeightedAverageNumberOfSharesOutstandingBasic gets its basic
+    series used as the diluted series ONLY when its latest annual
+    net income is negative (ASC 260: a loss-maker's diluted
+    denominator equals its basic denominator)."""
+
+    CFG = {"concepts": {"net_income": ["NetIncomeLoss"]}}
+
+    @staticmethod
+    def _facts(ni_latest):
+        def fy(concept_units, start, end, val, filed, form="10-K", fp="FY"):
+            return {"form": form, "fp": fp, "start": start, "end": end,
+                    "val": val, "filed": filed}
+        return {"facts": {"us-gaap": {
+            "WeightedAverageNumberOfSharesOutstandingBasic": {"units": {"shares": [
+                fy(None, "2024-01-01", "2024-12-31", 40, "2025-03-01"),
+                fy(None, "2025-01-01", "2025-12-31", 48, "2026-03-02"),
+                fy(None, "2026-07-01", "2026-09-30", 49, "2026-11-04",
+                   form="10-Q", fp="Q3")]}},
+            "NetIncomeLoss": {"units": {"USD": [
+                fy(None, "2024-01-01", "2024-12-31", -100, "2025-03-01"),
+                fy(None, "2025-01-01", "2025-12-31", ni_latest, "2026-03-02")]}}}}}
+
+    def test_loss_maker_basic_series_applies(self):
+        series, periods = {"diluted_shares": []}, {}
+        prov = edgarmod.apply_basic_shares_fallback(
+            series, periods, self._facts(-150), self.CFG)
+        self.assertTrue(prov["applied"])
+        self.assertEqual(series["diluted_shares"][-1]["value"], 48)
+        self.assertEqual(periods["diluted_shares"][-1]["value"], 49)
+        self.assertIs(series["_basic_shares_fallback"], prov)
+
+    def test_profitable_filer_stays_missing(self):
+        series, periods = {"diluted_shares": []}, {}
+        prov = edgarmod.apply_basic_shares_fallback(
+            series, periods, self._facts(50), self.CFG)
+        self.assertFalse(prov["applied"])
+        self.assertEqual(prov["reason"],
+                         "latest_annual_net_income_not_negative")
+        self.assertEqual(series["diluted_shares"], [])
+
+    def test_existing_diluted_series_untouched(self):
+        series = {"diluted_shares": [{"end": "2025-12-31", "value": 99}]}
+        prov = edgarmod.apply_basic_shares_fallback(
+            series, {}, self._facts(-150), self.CFG)
+        self.assertFalse(prov["applied"])
+        self.assertEqual(series["diluted_shares"][-1]["value"], 99)
 
 
 if __name__ == "__main__":
