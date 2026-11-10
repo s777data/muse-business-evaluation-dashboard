@@ -106,8 +106,29 @@ def evaluate(symbol, cfg):
     exec_hist = [{"fy_end": r["end"], "spent_usd": r["value"]}
                  for r in (series.get("share_repurchases") or [])]
     bb_remaining = buyback.get("remaining_usd")
+    # R8 guards at the scoring boundary (extractor revision 2): the
+    # XBRL execution history is the independent cross-check the filing
+    # text alone cannot provide. A sub-$1M "remaining" against >
+    # $100M of filed repurchases in any recent fiscal year is an
+    # extraction failure — the leg goes missing, never the anchor
+    # floor; and a forward yield above the 25% plausibility ceiling
+    # is rejected as a figure, not scored.
+    if bb_remaining is not None and bb_remaining < 1e6 and \
+            any((r["spent_usd"] or 0) > 1e8 for r in exec_hist):
+        buyback = dict(buyback)
+        buyback["flags"] = list(buyback.get("flags") or []) + \
+            ["buyback_remaining_extraction_implausible"]
+        buyback["remaining_usd"] = None
+        buyback["remaining_basis"] = None
+        bb_remaining = None
     if bb_remaining and m.get("market_cap"):
-        m["forward_buyback_yield_pct"] = round(100 * bb_remaining / m["market_cap"], 4)
+        bb_yield = 100 * bb_remaining / m["market_cap"]
+        if bb_yield > 25.0:
+            buyback = dict(buyback)
+            buyback["flags"] = list(buyback.get("flags") or []) + \
+                ["buyback_yield_implausible_ceiling"]
+        else:
+            m["forward_buyback_yield_pct"] = round(bb_yield, 4)
 
     # Peers: the subject's sector group from config/peers.yaml (EDGAR +
     # free price feed). The group drives the relative EV/S value
@@ -275,6 +296,7 @@ def evaluate(symbol, cfg):
         "beta_points": beta_res["points"],
         "beta_missing": beta is None,
         "market_cap_missing": m.get("market_cap") is None,
+        "diluted_shares_class_fallback": series.get("_class_share_fallback"),
         "dcf_missing_reason": dcf_missing_reason,
         "capex_normalized": bool(bases["normalized_applied"]),
         "capex_normalization_unavailable": bool(bases["normalization_unavailable"]),
@@ -303,6 +325,7 @@ def evaluate(symbol, cfg):
         "risk_free_and_erp": "config inputs in config/dcf.yaml",
         "sk_hynix_samsung": cfg["peers"].get("excluded_note"),
         "negative_trailing_pe_not_scored": bool(m.get("negative_trailing_pe_not_scored")),
+        "eps_derived_from_net_income": bool(m.get("eps_derived_from_net_income")),
         "peer_group": {"name": group_name,
                        "members_evaluated": len(peer_rows),
                        "members_with_ev_to_sales": evs_group_size,

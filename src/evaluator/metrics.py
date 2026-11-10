@@ -543,8 +543,25 @@ def add_price_metrics(metrics, price):
     net_cash = metrics.get("net_cash_latest") or 0
     metrics["ev_to_sales"] = (mktcap - net_cash) / rev
     eps = metrics.get("eps_diluted_ttm")
+    eps_derived = False
+    # Derived-EPS fallback: some filers never tag the standard EPS
+    # concepts in companyfacts (ABNB: EarningsPerShareDiluted/Basic
+    # are entirely absent — dual-class two-class EPS lives only in
+    # filing text), while net income and diluted shares ARE filed.
+    # Trailing EPS = filed TTM net income / diluted shares is the
+    # same filed-data arithmetic, disclosed via eps_derived flag —
+    # without it a profitable filer's P/E goes missing for a tagging
+    # reason, not an economic one. Filed EPS always wins when present.
+    if eps is None and metrics.get("net_income_ttm") is not None and shares:
+        eps = metrics["net_income_ttm"] / shares
+        eps_derived = True
     if eps is None:
         eps = metrics.get("eps_diluted_latest")
+    if eps is None and metrics.get("net_income_latest") is not None \
+            and metrics.get("diluted_shares_latest"):
+        eps = metrics["net_income_latest"] / metrics["diluted_shares_latest"]
+        eps_derived = True
+    metrics["eps_derived_from_net_income"] = eps_derived
     metrics["eps_used_for_trailing_pe"] = eps
     # Negative-P/E guard (v4): a loss-maker's negative P/E is not a
     # valuation signal — on the "lower is cheaper" anchors it used to

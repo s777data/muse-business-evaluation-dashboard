@@ -124,7 +124,8 @@ def get_periodic_buyback(sources_cfg, cik):
         if "Undeclared Automated Tool" in raw[:2000]:
             return {"filing": {**target, "url": url}, "buyback": None,
                     "error": "sec_archives_blocked_undeclared_tool"}
-        buyback = extract_buyback(strip_html(raw))
+        buyback = extract_buyback(strip_html(raw), raw_html=raw,
+                                  period_end=target["report_date"])
         return {"filing": {**target, "url": url}, "buyback": buyback, "error": None}
     except Exception as exc:
         return {"filing": None, "buyback": None, "error": str(exc)}

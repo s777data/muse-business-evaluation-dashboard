@@ -12,11 +12,12 @@ from src.evaluator.buybacks import extract_buyback
 from src.evaluator import prices as pricesmod
 from src.evaluator.dcf import (fair_value, growth_path, build_wacc,
                                fcf_base_per_share, dcf_bases)
-from src.evaluator.filings import extract_concentration
+from src.evaluator.filings import extract_concentration, strip_html
 from src.evaluator.metrics import (ttm_from_periods, _latest_period_value, add_price_metrics,
                                    compute_metrics, resolve_total_debt)
 from src.evaluator import config as cfgmod
 from src.evaluator import edgar as edgarmod
+from src.evaluator import class_shares as classsharesmod
 from src.evaluator import run as runmod
 
 RULES = {"base_if_no_single_customer_at_threshold": 7.0,
@@ -569,6 +570,25 @@ class TestV5EdgarEvidence(unittest.TestCase):
         self.assertEqual(latest["value"], 35.0)
         self.assertEqual(latest["end"], "2026-06-30")
 
+    def test_revenue_including_assessed_tax_resolves(self):
+        # CRWD-shaped (2026-11-09): CrowdStrike tags revenue ONLY as
+        # RevenueFromContractWithCustomerIncludingAssessedTax — none of
+        # the original three candidates exist in its companyfacts, so
+        # the run extracted no revenue and failed closed entirely.
+        sources = cfgmod.load_all()["sources"]
+        candidates = sources["concepts"]["revenue"]
+        self.assertIn("RevenueFromContractWithCustomerIncludingAssessedTax",
+                      candidates)
+        facts = _fixture_facts({
+            "RevenueFromContractWithCustomerIncludingAssessedTax": {"units": {"USD": [
+                {"form": "10-K", "fp": "FY", "start": "2024-02-01", "end": "2025-01-31",
+                 "val": 3.95e9, "filed": "2025-03-10"},
+                {"form": "10-K", "fp": "FY", "start": "2025-02-01", "end": "2026-01-31",
+                 "val": 4.81e9, "filed": "2026-03-05"}]}}})
+        series = edgarmod.annual_series(facts, candidates, "revenue")
+        self.assertEqual(series[-1]["value"], 4.81e9)
+        self.assertEqual(series[-1]["end"], "2026-01-31")
+
 
 class TestReporting(unittest.TestCase):
     """Reporting block: report_date is the latest Item 2.02 8-K filing
@@ -1109,6 +1129,78 @@ class TestV53Buybacks(unittest.TestCase):
         res2 = score_section(cfg["value"], {"forward_buyback_yield_pct": 15.0})
         self.assertFalse(apply_buyback_overvaluation_cap(res2, 43.08))
 
+    def test_abnb_available_to_repurchases_and_new_program(self):
+        # ABNB Q3 FY26 10-Q shape (reported as a dashboard bug
+        # 2026-11-09): remaining stated as "available to repurchase",
+        # plus a post-period NEW $12B program (Nov 3, 2026) with the
+        # prior $6.0B program "remains in effect with $2.7 billion
+        # available" -> scored remaining is 12.0 + 2.7 = $14.7B.
+        text = (
+            "In August 2025, the Company announced that its board of directors approved a new "
+            "share repurchase program with authorization to purchase up to $ 6.0 billion of the "
+            "Company's Class A common stock. "
+            "As of September 30, 2026, the Company had $ 2.7 billion available to repurchase "
+            "shares of Class A common stock under its share repurchase program. "
+            "During the three months ended September 30, 2026, we repurchased 4.4 million "
+            "shares of Class A common stock for $712 million, leaving $2.7 billion available "
+            "to repurchase under our share repurchase program. "
+            "On November 3, 2026, the Company's board of directors approved a new share "
+            "repurchase program with authorization to purchase up to an additional $ 12 "
+            "billion of the Company's Class A common stock at management's discretion. "
+            "The Company's prior share repurchase program, which authorized $ 6.0 billion, "
+            "remains in effect with $ 2.7 billion available as of September 30, 2026."
+        )
+        out = extract_buyback(text)
+        self.assertEqual(out["remaining_usd"], 14.7e9)
+        self.assertEqual(out["remaining_basis"],
+                         "post_period_new_program_plus_prior_program_remaining")
+        self.assertEqual(out["authorization_date"], "November 3, 2026")
+        self.assertEqual(out["authorization_total_usd"], 18.0e9)
+        types = [h["type"] for h in out["history"]]
+        self.assertIn("program_authorized", types)
+        self.assertIn("authorization_new_program", types)
+        self.assertIn("remaining_at_period_end", types)
+        prog = next(h for h in out["history"] if h["type"] == "program_authorized")
+        self.assertEqual(prog["amount_usd"], 6.0e9)
+
+    def test_item_703_title_case_header(self):
+        # ABNB title-cases the Item 703 header; the fallback search is
+        # case-insensitive and still lands on the final-column total.
+        text = ("Period Total Number of Shares Purchased Average Price Paid per Share "
+                "Total Number of Shares Purchased as Part of Publicly Announced Plans or "
+                "Programs Approximate Dollar Value of Shares that May Yet Be Purchased "
+                "Under Publicly Announced Plans or Programs (in millions) "
+                "July 1, 2026 - July 31, 2026 100 150.00 100 $ 2,700 "
+                "August 1, 2026 - August 31, 2026 - $ - - - "
+                "Total 100 $ 2,700 ITEM 2. OTHER")
+        out = extract_buyback(text)
+        self.assertEqual(out["remaining_usd"], 2700e6)
+        self.assertEqual(out["remaining_basis"], "item_703_table_may_yet_be_purchased")
+
+    def test_derived_eps_fallback_for_missing_eps_concept(self):
+        # ABNB shape: no EarningsPerShareDiluted in companyfacts at
+        # all, but net income and diluted shares are filed -> trailing
+        # P/E is computed on derived EPS and flagged as derived.
+        metrics = {"net_income_ttm": 2.77e9, "net_income_latest": 2.511e9,
+                   "diluted_shares_latest_period": 597e6, "diluted_shares_latest": 623e6,
+                   "revenue_ttm": 13.933e9, "net_cash_latest": 10.09e9,
+                   "fcf_ttm": 3.204e9}
+        price = {"last_close": 192.79, "high_52w": 192.79, "low_52w": 111.54}
+        out = add_price_metrics(dict(metrics), price)
+        self.assertTrue(out["eps_derived_from_net_income"])
+        self.assertAlmostEqual(out["eps_used_for_trailing_pe"], 2.77e9 / 597e6, places=4)
+        self.assertAlmostEqual(out["trailing_pe"], 192.79 / (2.77e9 / 597e6), places=2)
+        # Filed EPS always wins over the derived figure.
+        metrics2 = dict(metrics, eps_diluted_ttm=5.0)
+        out2 = add_price_metrics(metrics2, price)
+        self.assertFalse(out2["eps_derived_from_net_income"])
+        self.assertEqual(out2["trailing_pe"], 192.79 / 5.0)
+        # Derived loss still trips the negative-P/E guard.
+        metrics3 = dict(metrics, net_income_ttm=-1.0e9)
+        out3 = add_price_metrics(metrics3, price)
+        self.assertIsNone(out3["trailing_pe"])
+        self.assertTrue(out3["negative_trailing_pe_not_scored"])
+
     def test_mu_value_total_matches_spec(self):
         # Spec test 7 (arithmetic, on the V5.2 run's own sub-scores):
         # V5.3 Value for MU = 6.88 with Business/Moat untouched.
@@ -1125,6 +1217,340 @@ class TestV53Buybacks(unittest.TestCase):
         self.assertAlmostEqual(res["subscores"]["forward_buyback_yield_pct"]["score"],
                                6.048, places=2)
         self.assertAlmostEqual(res["total"], 6.88, places=2)
+
+
+class TestBuybackExtractorR2(unittest.TestCase):
+    """Extractor revision 2 (rules R1–R8, 2026-11-09) regression tests
+    on real filings. Fixtures are trimmed excerpts of the filings of
+    record (the Item 703 section plus the narrative carrying the
+    figure); the expected values are the filings' own. The nominal
+    figures the first extractor produced on these same filings —
+    $209 / $7.20 / $256 — are the failures under test."""
+
+    FX = Path(__file__).resolve().parent / "fixtures"
+
+    def _extract(self, name, period_end):
+        html_doc = (self.FX / name).read_text(encoding="utf-8")
+        return extract_buyback(strip_html(html_doc), raw_html=html_doc,
+                               period_end=period_end)
+
+    def test_nvda_billions_table_and_asof_rule(self):
+        # NVDA Q2 FY27 10-Q (filed 2026-08-26, period ended July 26,
+        # 2026): Item 2 table printed "(In billions)", Total-row
+        # remainder blank, Note 12 states the as-of current
+        # authorization (R5, validated against the table's final
+        # cell). Expected $99.3B — NOT the $235B press figure: no
+        # Q3 10-Q and no 8-K exists on the Nov 6 basis, and the
+        # extractor never reaches outside periodic filings.
+        out = self._extract("nvda_q2fy27_10q.html", "2026-07-26")
+        self.assertEqual(out["remaining_usd"], 99.3e9)
+        self.assertEqual(out["remaining_basis"],
+                         "narrative_asof_current_authorization")
+        self.assertEqual(out["remaining_as_of"], "July 26, 2026")
+        self.assertNotIn("buyback_remaining_extraction_implausible", out["flags"])
+
+    def test_nvda_flattened_text_only(self):
+        # The bounded flattened-text table parse (no raw HTML) must
+        # not be poisoned by the post-table prose either (the $209M
+        # share-issuance line follows the table in the filing).
+        html_doc = (self.FX / "nvda_q2fy27_10q.html").read_text(encoding="utf-8")
+        out = extract_buyback(strip_html(html_doc))
+        self.assertEqual(out["remaining_usd"], 99.3e9)
+
+    def test_cat_authorization_phrasing(self):
+        # CAT Q3 2026 10-Q (filed 2026-11-04): remaining is phrased
+        # against "the 2024 Authorization" — the availability sentence
+        # carries no 'repurchas' string, so the old gate discarded it
+        # and the fallback returned the footnote's bare 7.2 with no
+        # unit. Expected $7.192B (table and MD&A agree exactly).
+        out = self._extract("cat_q3_2026_10q.html", "2026-09-30")
+        self.assertEqual(out["remaining_usd"], 7.192e9)
+        self.assertEqual(out["authorization_total_usd"], 20.0e9)
+        self.assertNotIn("buyback_remaining_extraction_implausible", out["flags"])
+
+    def test_aapl_multi_program_table_total(self):
+        # AAPL FY26 10-K (filed 2026-11-03): Item 5 table in millions,
+        # remainder only in the Total row — $114,004M, reconciling
+        # with footnote (1)'s decomposition ($14.0B left on the May
+        # 2025 program + the undrawn $100B April 2026 program, R6).
+        # The table total governs.
+        out = self._extract("aapl_fy26_10k.html", "2026-09-26")
+        self.assertEqual(out["remaining_usd"], 114.004e9)
+        self.assertEqual(out["remaining_basis"],
+                         "item_703_table_may_yet_be_purchased")
+        types = [h["type"] for h in out["history"]]
+        self.assertIn("remaining_multi_program_reconciled", types)
+
+    def test_floor_test_rejects_nominal_extraction(self):
+        # R8 guard: a sub-$1M 'remaining' against > $100M of
+        # repurchase activity in the same filing is an extraction
+        # failure — the leg goes missing with the implausible flag,
+        # never scored at the 2.00 anchor floor, and the failure is
+        # not misreported as a non-disclosure.
+        text = ("During the quarter, the Company repurchased $2.4 billion of its "
+                "common stock under the repurchase program. As of June 30, 2026, "
+                "$0.4 million remained available under the repurchase program.")
+        out = extract_buyback(text)
+        self.assertIsNone(out["remaining_usd"])
+        self.assertIn("buyback_remaining_extraction_implausible", out["flags"])
+        self.assertNotIn("buyback_remaining_not_disclosed", out["flags"])
+
+    def test_post_period_addition_shape(self):
+        # R7: 'approved an additional $X in share repurchase
+        # authorization' after period end adds to the period-end
+        # remaining. (The in-period form is a ledger event only —
+        # covered by the NVDA fixture, whose May 2026 +$80B must not
+        # supersede the July 26 figure.)
+        text = ("In 2024, the Board authorized a share repurchase program of up to "
+                "$10.0 billion. As of September 30, 2026, $2.0 billion remained "
+                "available under the share repurchase program. On November 5, 2026, "
+                "the Board approved an additional $5.0 billion in share repurchase "
+                "authorization, without expiration.")
+        out = extract_buyback(text)
+        self.assertEqual(out["remaining_usd"], 7.0e9)
+        self.assertEqual(out["remaining_basis"],
+                         "post_period_increase_added_to_period_end_remaining")
+
+    def test_table_scale_inferred_from_narrative(self):
+        # R8 unit-consistency: table cells printed in full dollars
+        # under a '(in thousands)' caption — the narrative's explicit
+        # unit word identifies the true scale, the scale is corrected
+        # and flagged, and the figures then agree.
+        html_doc = ("<p>As of June 30, 2026, $5.0 billion remained available under "
+                    "the share repurchase program.</p>"
+                    "<table><tr><td>Period</td><td>Total Number of Shares Purchased</td>"
+                    "<td>Average Price Paid per Share</td><td>Total Number of Shares "
+                    "Purchased as Part of Publicly Announced Plans or Programs</td>"
+                    "<td>Approximate Dollar Value of Shares that May Yet Be Purchased "
+                    "Under the Plans or Programs (in thousands)</td></tr>"
+                    "<tr><td>April 1, 2026 - June 30, 2026</td><td>1,000</td>"
+                    "<td>$ 50.00</td><td>1,000</td><td>$ 5,000</td></tr></table>")
+        out = extract_buyback(strip_html(html_doc), raw_html=html_doc)
+        self.assertEqual(out["remaining_usd"], 5.0e9)
+        self.assertIn("buyback_table_scale_inferred_from_narrative", out["flags"])
+
+    def test_asof_authorization_unvalidated_fails_closed(self):
+        # R5 with neither a table nor a buildable ledger to validate
+        # against: the as-of figure is recorded, flagged, never scored.
+        text = ("As of June 30, 2026, we were authorized to repurchase up to "
+                "$40.0 billion of our common stock.")
+        out = extract_buyback(text)
+        self.assertIsNone(out["remaining_usd"])
+        self.assertIn("buyback_asof_authorization_unvalidated", out["flags"])
+
+
+def _inline_doc(ni_text, facts, start="2025-01-01", end="2025-12-31"):
+    """Minimal inline-XBRL document: one undimensioned context (c0) plus
+    one class-dimensioned context per member (cA, cB, ...). `facts` is a
+    list of (concept, context_id, text_value, scale). Net income uses
+    context c0 and scale 6 (millions)."""
+    members = sorted({c for _, c, _, _ in facts if c != "c0"})
+    ctxs = [f'<xbrli:context id="c0"><xbrli:period><xbrli:startDate>{start}</xbrli:startDate>'
+            f'<xbrli:endDate>{end}</xbrli:endDate></xbrli:period></xbrli:context>']
+    for m in members:
+        ctxs.append(
+            f'<xbrli:context id="{m}"><xbrli:period><xbrli:startDate>{start}</xbrli:startDate>'
+            f'<xbrli:endDate>{end}</xbrli:endDate></xbrli:period><xbrli:segment>'
+            f'<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">'
+            f'us-gaap:CommonClass{m[-1]}Member</xbrldi:explicitMember></xbrli:segment>'
+            f'</xbrli:context>')
+    body = [f'<ix:nonFraction name="us-gaap:NetIncomeLoss" contextRef="c0" '
+            f'scale="6">{ni_text}</ix:nonFraction>']
+    for concept, cref, val, scale in facts:
+        body.append(f'<ix:nonFraction name="us-gaap:{concept}" contextRef="{cref}" '
+                    f'scale="{scale}">{val}</ix:nonFraction>')
+    return ("<html><body><div style=\"display:none\"><ix:header>"
+            + "".join(ctxs) + "</ix:header></div>" + "".join(body) + "</body></html>")
+
+
+class TestClassShareFallback(unittest.TestCase):
+    """Generic multi-class diluted-shares fallback (class_shares.py):
+    a combined share count is recovered from the filing ONLY when it
+    reproduces a reported diluted EPS from filed net income."""
+
+    def test_member_as_converted_validates_sum_rejected(self):
+        # Visa-shaped: Class A 1,000M is the combined as-converted count
+        # (NI $10.0B / 1,000M = $10.00 = reported Class A diluted EPS);
+        # Class B is a standalone class (EPS $20.00). The naive sum
+        # (1,100M -> $9.09) reproduces no reported EPS and must NOT win.
+        doc = _inline_doc("10,000", [
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "1,000", "6"),
+            ("EarningsPerShareDiluted", "cA", "10.00", "0"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cB", "100", "6"),
+            ("EarningsPerShareDiluted", "cB", "20.00", "0")])
+        out = classsharesmod.extract_class_diluted_shares(doc)
+        self.assertEqual(out["annual"], [{"end": "2025-12-31", "value": 1.0e9}])
+        self.assertEqual(out["validations"][0]["method"], "member_as_converted")
+        self.assertEqual(out["validations"][0]["member"], "CommonClassAMember")
+
+    def test_equal_eps_sum_validates(self):
+        # Equal-participation two-class filer: both classes report the
+        # same diluted EPS $5.00; neither class alone reproduces it,
+        # the sum (600M + 400M; NI $5.0B / 1,000M = $5.00) does.
+        doc = _inline_doc("5,000", [
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "600", "6"),
+            ("EarningsPerShareDiluted", "cA", "5.00", "0"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cB", "400", "6"),
+            ("EarningsPerShareDiluted", "cB", "5.00", "0")])
+        out = classsharesmod.extract_class_diluted_shares(doc)
+        self.assertEqual(out["annual"], [{"end": "2025-12-31", "value": 1.0e9}])
+        self.assertEqual(out["validations"][0]["method"], "sum_of_classes")
+
+    def test_no_validation_stays_missing(self):
+        doc = _inline_doc("5,000", [
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "600", "6"),
+            ("EarningsPerShareDiluted", "cA", "7.00", "0"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cB", "400", "6"),
+            ("EarningsPerShareDiluted", "cB", "9.00", "0")])
+        out = classsharesmod.extract_class_diluted_shares(doc)
+        self.assertEqual(out["annual"], [])
+        self.assertEqual(out["periods"], [])
+
+    def test_conflicting_hypotheses_stay_missing(self):
+        # Undimensioned count (900M, EPS $10.00) and Class A count
+        # (1,000M, EPS $9.00) EACH reproduce an EPS from NI $9.0B but
+        # imply different totals — ambiguous, fail closed.
+        doc = _inline_doc("9,000", [
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "c0", "900", "6"),
+            ("EarningsPerShareDiluted", "c0", "10.00", "0"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "1,000", "6"),
+            ("EarningsPerShareDiluted", "cA", "9.00", "0")])
+        out = classsharesmod.extract_class_diluted_shares(doc)
+        self.assertEqual(out["annual"], [])
+
+    def test_agreeing_hypotheses_accept_the_shared_count(self):
+        # Undimensioned and Class A state the SAME combined count and
+        # EPS (statements vs EPS-note presentation): one answer, accept.
+        doc = _inline_doc("10,000", [
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "c0", "1,000", "6"),
+            ("EarningsPerShareDiluted", "c0", "10.00", "0"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "1,000", "6"),
+            ("EarningsPerShareDiluted", "cA", "10.00", "0"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cB", "100", "6"),
+            ("EarningsPerShareDiluted", "cB", "20.00", "0")])
+        out = classsharesmod.extract_class_diluted_shares(doc)
+        self.assertEqual(out["annual"], [{"end": "2025-12-31", "value": 1.0e9}])
+
+    def test_conflicting_facts_for_one_member_fail_the_period(self):
+        # The same fact stated twice with the SAME value (income
+        # statement + EPS note) is one fact and validates normally...
+        doc = _inline_doc("10,000", [
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "1,000", "6"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "1,000", "6"),
+            ("EarningsPerShareDiluted", "cA", "10.00", "0")])
+        self.assertEqual(classsharesmod.extract_class_diluted_shares(doc)["annual"],
+                         [{"end": "2025-12-31", "value": 1.0e9}])
+        # ...but two DIFFERENT values for one member poison the period.
+        doc_conflict = _inline_doc("10,000", [
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "1,000", "6"),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "cA", "1,100", "6"),
+            ("EarningsPerShareDiluted", "cA", "10.00", "0")])
+        self.assertEqual(classsharesmod.extract_class_diluted_shares(doc_conflict)["annual"],
+                         [])
+
+    def test_fallback_wiring(self):
+        # Never fires when companyfacts already has a diluted series.
+        series = {"diluted_shares": [{"end": "2025-12-31", "value": 5.0}]}
+        periods = {"diluted_shares": []}
+        with mock.patch("src.evaluator.class_shares.get_class_diluted_shares") as g:
+            prov = edgarmod.apply_class_share_fallback(series, periods, {}, "0000000001")
+            g.assert_not_called()
+        self.assertFalse(prov["applied"])
+        # Fires and injects when the series is empty.
+        series = {"diluted_shares": []}
+        periods = {}
+        fake = {"annual": [{"end": "2025-12-31", "value": 1.0e9, "filed": "2026-02-01"}],
+                "periods": [{"start": "2025-01-01", "end": "2025-12-31",
+                             "value": 1.0e9, "filed": "2026-02-01"}],
+                "validations": [{"method": "member_as_converted"}],
+                "filings": [], "error": None}
+        with mock.patch("src.evaluator.class_shares.get_class_diluted_shares",
+                        return_value=fake):
+            prov = edgarmod.apply_class_share_fallback(series, periods, {}, "0001403161")
+        self.assertTrue(prov["applied"])
+        self.assertEqual(series["diluted_shares"][-1]["value"], 1.0e9)
+        self.assertEqual(periods["diluted_shares"][-1]["value"], 1.0e9)
+        self.assertEqual(series["_class_share_fallback"]["validations"],
+                         [{"method": "member_as_converted"}])
+
+
+class TestBuybackExtractorR3(unittest.TestCase):
+    """Extractor revision 3 (2026-11-09) field fixes, found on the
+    first full-universe run of revision 2. Same discipline: real
+    filings where a fixture exists, minimal synthetic sentences where
+    the construction is the whole point."""
+
+    FX = Path(__file__).resolve().parent / "fixtures"
+
+    def _extract(self, name, period_end):
+        html_doc = (self.FX / name).read_text(encoding="utf-8")
+        return extract_buyback(strip_html(html_doc), raw_html=html_doc,
+                               period_end=period_end)
+
+    def test_lrcx_amount_available_column(self):
+        # Lam Research titles the column 'Amount Available Under
+        # Repurchase Program' (in thousands) and carries an opening
+        # 'Available balance' row: the final balance governs, not
+        # the opening one and not the May 2024 $10B origination the
+        # as-of rule must leave unvalidated.
+        out = self._extract("lrcx_q1fy27_10q.html", "2026-09-27")
+        self.assertEqual(out["remaining_usd"], 3032013000.0)
+        self.assertEqual(out["remaining_basis"],
+                         "item_703_table_may_yet_be_purchased")
+
+    def test_txn_cell_carries_its_own_unit(self):
+        # TI prints the may-yet cells as '$ 18.56 billion' — the cell
+        # states its own scale; the table has no other unit statement
+        # for the column.
+        out = self._extract("txn_q3_2026_10q.html", "2026-09-30")
+        self.assertEqual(out["remaining_usd"], 18560000000.0)
+
+    def test_atm_issuance_shelf_is_not_a_buyback(self):
+        # An at-the-market OFFERING shelf 'remained available to be
+        # sold under the ATM Program' is shares to be issued — the
+        # opposite of a repurchase remainder.
+        text = ("As of September 30, 2026, $461 million of registered "
+                "aggregate offering price remained available to be sold "
+                "under the ATM Program.")
+        out = extract_buyback(text, period_end="2026-09-30")
+        self.assertIsNone(out["remaining_usd"])
+        self.assertIn("buyback_remaining_not_disclosed", out["flags"])
+
+    def test_completed_program_is_never_summed(self):
+        # The filing states the November 2025 program was completed;
+        # only the February 2026 program's stated remainder counts.
+        text = ("In November 2025, our board of directors authorized a "
+                "stock repurchase program of up to $500.0 million. "
+                "In February 2026, our board of directors authorized a "
+                "stock repurchase program of up to $500.0 million. "
+                "We completed the November 2025 program in January 2026, "
+                "and the remaining availability under the February 2026 "
+                "program as of September 30, 2026 was $150.0 million.")
+        out = extract_buyback(text, period_end="2026-09-30")
+        self.assertEqual(out["remaining_usd"], 150000000.0)
+
+    def test_of_the_authorization_construction(self):
+        # '$A of the $B authorization remained available' — $A is the
+        # remainder, $B the program total.
+        text = ("As of August 2, 2026, approximately $11.7 billion of "
+                "the $15.0 billion share repurchase authorization "
+                "remained available.")
+        out = extract_buyback(text, period_end="2026-08-02")
+        self.assertEqual(out["remaining_usd"], 11700000000.0)
+
+    def test_share_denominated_may_yet_is_not_dollars(self):
+        # A 'Maximum NUMBER of Shares That May Yet Be Purchased'
+        # column is a share count; the filing states no dollar
+        # remainder and the leg fails closed.
+        html_doc = ("<html><body><table>"
+                    "<tr><td>Period</td><td>Maximum Number of Shares "
+                    "That May Yet Be Purchased Under the Program</td></tr>"
+                    "<tr><td>July 2026</td><td>9.1</td></tr>"
+                    "<tr><td>September 2026</td><td>7.2</td></tr>"
+                    "</table></body></html>")
+        out = extract_buyback(strip_html(html_doc), raw_html=html_doc,
+                              period_end="2026-09-30")
+        self.assertIsNone(out["remaining_usd"])
 
 
 if __name__ == "__main__":

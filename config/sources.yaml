@@ -25,7 +25,10 @@ sources:
 # profit falls back to revenue minus cost_of_revenue when a filer
 # (e.g. STX) tags cost but not gross profit.
 concepts:
-  revenue: ["RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "Revenues"]
+  # RevenueFromContractWithCustomerIncludingAssessedTax added 2026-11-09:
+  # CRWD tags revenue ONLY under the Including variant; without it CRWD
+  # extracted no revenue at all and the whole run failed closed.
+  revenue: ["RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "Revenues", "RevenueFromContractWithCustomerIncludingAssessedTax"]
   gross_profit: ["GrossProfit"]
   cost_of_revenue: ["CostOfGoodsAndServicesSold", "CostOfRevenue", "CostOfGoodsSold"]
   operating_income: ["OperatingIncomeLoss"]

@@ -369,4 +369,35 @@ def get_company_metrics(sources_cfg, cik):
     series["_verified_zero_debt"] = verified_zero_debt_evidence(facts, sources_cfg)
     series["_periods"] = periods
     series["_balance_latest"] = balance_latest
+    apply_class_share_fallback(series, periods, sources_cfg, cik)
     return facts.get("entityName"), series
+
+
+def apply_class_share_fallback(series, periods, sources_cfg, cik):
+    """Multi-class diluted-shares fallback (see class_shares.py): when
+    companyfacts exposes NO annual diluted-share series at all — the
+    filer tags shares only dimensioned by share class — recover the
+    combined count from the filer's own periodic filing, but only
+    where it reproduces a reported diluted EPS from filed net income
+    (self-validating; anything else stays missing, fail-closed).
+    Injected rows use the same shapes as companyfacts-derived rows, so
+    market cap, per-share DCF bases and the dilution CAGR downstream
+    work unchanged. Provenance is recorded on
+    series["_class_share_fallback"] either way. Never fires for a
+    filer with a company-level companyfacts series."""
+    provenance = {"applied": False}
+    if series.get("diluted_shares"):
+        series["_class_share_fallback"] = provenance
+        return provenance
+    from .class_shares import get_class_diluted_shares
+    fb = get_class_diluted_shares(sources_cfg, cik)
+    provenance = {"applied": bool(fb.get("annual") or fb.get("periods")),
+                  "error": fb.get("error"),
+                  "filings": fb.get("filings") or [],
+                  "validations": fb.get("validations") or []}
+    if fb.get("annual"):
+        series["diluted_shares"] = fb["annual"]
+    if fb.get("periods"):
+        periods["diluted_shares"] = fb["periods"]
+    series["_class_share_fallback"] = provenance
+    return provenance
