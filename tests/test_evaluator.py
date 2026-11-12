@@ -1906,7 +1906,7 @@ class TestV54MissingPolicy(unittest.TestCase):
     BIZ = {"revenue_growth_latest_pct": 25, "revenue_cagr_5y_pct": 10,
            "gross_margin_median_5y_pct": 45, "operating_margin_median_5y_pct": 10,
            "fcf_margin_median_5y_pct": None, "net_cash_to_revenue": 0,
-           "gross_margin_stdev_5y_pts": 10, "dilution_share_count_growth_pct": 0,
+           "gross_margin_relative_volatility": 0.15, "dilution_share_count_growth_pct": 0,
            "leverage_debt_to_revenue_ttm": 1.0, "interest_coverage_ttm": 4}
     # Present-leg weighted sum = 4.9625 over 0.85 of weight.
     VAL = {"trailing_pe": None, "price_to_sales": 2, "ev_to_sales": 2,
@@ -2027,6 +2027,184 @@ class TestV54MissingPolicy(unittest.TestCase):
         self.assertTrue(vp["enabled"])
         self.assertEqual(vp["metrics"],
                          ["trailing_pe", "fcf_yield_latest_pct"])
+
+
+class TestV55SMCIFixes(unittest.TestCase):
+    """V5.5 (SMCI audit): component-sum debt fallback, gross interest
+    coverage capped at 100, split-adjusted dilution with a quarterly
+    fallback, and relative gross-margin volatility. SMCI's filed
+    shapes: borrowings only as DebtLongtermAndShorttermCombinedAmount
+    ($3.977B) + ConvertibleLongTermNotesPayable ($4.669B); gross
+    interest only as InterestExpenseNonoperating; share series with a
+    10.02x step at the 10-for-1 split; GM stdev 2.71 pts on a 13.75%
+    median margin."""
+
+    SMCI_COMPONENTS = {
+        "combined_borrowings": {
+            "total": {"DebtLongtermAndShorttermCombinedAmount":
+                      {"2026-09-30": 3.977071e9}},
+            "current": {}, "noncurrent": {}},
+        "convertible_notes": {
+            "total": {},
+            "current": {},
+            "noncurrent": {"ConvertibleLongTermNotesPayable":
+                           {"2026-09-30": 4.668946e9}}},
+        "lines_of_credit": {"total": {}, "current": {}, "noncurrent": {}},
+        "short_term_borrowings": {"total": {}, "current": {}, "noncurrent": {}},
+        "finance_leases": {"total": {}, "current": {}, "noncurrent": {}},
+    }
+
+    def test_component_sum_fallback_resolves_smci_debt(self):
+        instants = {"totals": {"LongTermDebt": {"2023-06-30": 120.179e6}},
+                    "grand_totals": {}, "families": {},
+                    "components": self.SMCI_COMPONENTS}
+        res = resolve_total_debt(instants)
+        # The stale FY23 single total must NOT win: the newest date
+        # resolves by component sum, $3.977B + $4.669B = $8.646B.
+        self.assertEqual(res["method"], "component_sum_fallback")
+        self.assertEqual(res["as_of"], "2026-09-30")
+        self.assertAlmostEqual(res["value"], 8.646017e9, places=0)
+
+    def test_component_sum_never_added_to_aggregate(self):
+        instants = {"totals": {"LongTermDebt": {"2026-09-30": 9.0e9}},
+                    "grand_totals": {}, "families": {},
+                    "components": self.SMCI_COMPONENTS}
+        res = resolve_total_debt(instants)
+        self.assertEqual(res["method"], "single_total:LongTermDebt")
+        self.assertEqual(res["value"], 9.0e9)
+
+    def test_finance_lease_alone_does_not_resolve(self):
+        instants = {"totals": {}, "grand_totals": {}, "families": {},
+                    "components": {"finance_leases": {
+                        "total": {"FinanceLeaseLiability": {"2026-09-30": 5.0e8}},
+                        "current": {}, "noncurrent": {}}}}
+        res = resolve_total_debt(instants)
+        self.assertIsNone(res["value"])
+        self.assertEqual(res["method"], "not_determinable")
+
+    def test_component_debt_flows_to_net_cash_and_leverage(self):
+        series = {
+            "revenue": [{"end": "2026-06-30", "value": 53.991114e9}],
+            "cash": [{"end": "2026-06-30", "value": 6.897497e9}],
+            "_periods": {},
+            "_balance_latest": {"cash": {"end": "2026-09-30",
+                                         "value": 6.897497e9,
+                                         "filed": "2026-11-06"}},
+            "_debt_instants": {"totals": {}, "grand_totals": {},
+                               "families": {},
+                               "components": self.SMCI_COMPONENTS},
+        }
+        m = compute_metrics(series, 15.0)
+        self.assertAlmostEqual(m["total_debt_latest"], 8.646017e9, places=0)
+        self.assertAlmostEqual(m["net_cash_latest"], -1.748520e9, places=0)
+        self.assertAlmostEqual(m["leverage_debt_to_revenue_ttm"],
+                               8.646017e9 / 53.991114e9, places=4)
+        self.assertLess(m["net_cash_to_revenue"], 0)
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertIn("leverage_debt_to_revenue_ttm", business["subscores"])
+        self.assertIn("net_cash_to_revenue", business["subscores"])
+
+    def test_interest_coverage_capped_at_100(self):
+        series = _flow_series([100.0, 110.0, 121.0])
+        series["operating_income"] = [{"end": "2025-12-31", "value": 2500.0}]
+        series["interest_expense"] = [{"end": "2025-12-31", "value": 10.0}]
+        series["_periods"] = {
+            "operating_income": [{"start": "2025-01-01", "end": "2025-12-31",
+                                  "value": 2500.0, "filed": "2026-02-01"}],
+            "interest_expense": [{"start": "2025-01-01", "end": "2025-12-31",
+                                  "value": 10.0, "filed": "2026-02-01"}]}
+        m = compute_metrics(series, 15.0)
+        self.assertEqual(m["interest_coverage_ttm_uncapped"], 250.0)
+        self.assertEqual(m["interest_coverage_ttm"], 100.0)
+
+    def test_interest_concepts_are_gross_only(self):
+        concepts = cfgmod.load_all()["sources"]["concepts"]["interest_expense"]
+        self.assertIn("InterestExpenseNonoperating", concepts)
+        for banned in ("InterestIncomeExpenseNet",
+                       "InterestIncomeExpenseAfterProvisionForLoanLoss"):
+            self.assertNotIn(banned, concepts)
+
+    def test_dilution_split_adjusted_annual_cagr(self):
+        ends = ["2021-06-30", "2022-06-30", "2023-06-30",
+                "2024-06-30", "2025-06-30", "2026-06-30"]
+        shares = [53.507e6, 536.155e6, 559.704e6,
+                  602.146e6, 628.402e6, 697.348e6]
+        series = {
+            "revenue": [{"end": e, "value": 100.0} for e in ends],
+            "diluted_shares": [{"end": e, "value": v}
+                               for e, v in zip(ends, shares)],
+            "_periods": {}, "_balance_latest": {},
+            "_debt_instants": {"totals": {}, "current": {}, "noncurrent": {}},
+        }
+        m = compute_metrics(series, 15.0)
+        # FY21 restated x10 -> (697.348 / 535.070) ^ (1/5) - 1 = 5.44%.
+        self.assertAlmostEqual(m["dilution_share_count_growth_pct"], 5.44, delta=0.05)
+        self.assertEqual(m["dilution_method"], "annual_cagr_split_adjusted")
+        self.assertFalse(m["dilution_share_series_discontinuity"])
+        self.assertEqual(m["dilution_split_adjustments"][0]["factor"], 10.0)
+        self.assertIsNone(m["dilution_data_quality_warning"])
+        business = score_section(cfgmod.load_all()["scoring"]["business"], m)
+        self.assertIn("dilution_share_count_growth_pct", business["subscores"])
+        self.assertNotIn("dilution_share_count_growth_pct",
+                         business["missing_metrics"])
+
+    def test_dilution_quarterly_yoy_fallback(self):
+        series = {
+            "revenue": [{"end": "2025-06-30", "value": 100.0},
+                        {"end": "2026-06-30", "value": 120.0}],
+            "diluted_shares": [{"end": "2026-06-30", "value": 697.348e6}],
+            "_periods": {"diluted_shares": [
+                {"start": "2025-07-01", "end": "2025-09-30",
+                 "value": 663.235e6, "filed": "2025-11-07"},
+                {"start": "2026-07-01", "end": "2026-09-30",
+                 "value": 749.351e6, "filed": "2026-11-06"}]},
+            "_balance_latest": {},
+            "_debt_instants": {"totals": {}, "current": {}, "noncurrent": {}},
+        }
+        m = compute_metrics(series, 15.0)
+        self.assertAlmostEqual(m["dilution_share_count_growth_pct"],
+                               (749.351 / 663.235 - 1) * 100, places=2)
+        self.assertEqual(m["dilution_method"], "quarterly_yoy_fallback")
+
+    def test_shares_outstanding_last_resort_fallback(self):
+        facts = {"facts": {"us-gaap": {"CommonStockSharesOutstanding": {
+            "units": {"shares": [
+                {"end": "2025-06-30", "val": 600.0e6, "form": "10-K",
+                 "fp": "FY", "filed": "2025-08-28"},
+                {"end": "2026-06-30", "val": 660.0e6, "form": "10-K",
+                 "fp": "FY", "filed": "2026-08-28"}]}}}}}
+        series, periods = {}, {}
+        cfg = {"concepts": {"shares_outstanding": ["CommonStockSharesOutstanding"]}}
+        prov = edgarmod.apply_shares_outstanding_fallback(
+            series, periods, facts, cfg)
+        self.assertTrue(prov["applied"])
+        self.assertEqual(series["diluted_shares"][-1]["value"], 660.0e6)
+
+    def test_relative_volatility_penalises_low_margin(self):
+        def gm_series(margins):
+            ends = ["2022-12-31", "2023-12-31", "2024-12-31",
+                    "2025-12-31", "2026-12-31"]
+            return {
+                "revenue": [{"end": e, "value": 100.0} for e in ends],
+                "gross_profit": [{"end": e, "value": v}
+                                 for e, v in zip(ends, margins)],
+                "_periods": {}, "_balance_latest": {},
+                "_debt_instants": {"totals": {}, "current": {}, "noncurrent": {}},
+            }
+        # Same raw stdev (2.71 pts) at two margin levels.
+        low = compute_metrics(gm_series([10.722, 16.778, 10.722, 16.778, 13.75]), 15.0)
+        high = compute_metrics(gm_series([76.972, 83.028, 76.972, 83.028, 80.0]), 15.0)
+        self.assertAlmostEqual(low["gross_margin_stdev_5y_pts"], 2.71, delta=0.01)
+        self.assertAlmostEqual(high["gross_margin_stdev_5y_pts"], 2.71, delta=0.01)
+        self.assertAlmostEqual(low["gross_margin_relative_volatility"], 0.197, delta=0.002)
+        self.assertAlmostEqual(high["gross_margin_relative_volatility"], 0.034, delta=0.002)
+        cfg = cfgmod.load_all()["scoring"]["business"]
+        low_score = score_section(cfg, low)["subscores"][
+            "gross_margin_relative_volatility"]["score"]
+        high_score = score_section(cfg, high)["subscores"][
+            "gross_margin_relative_volatility"]["score"]
+        self.assertLess(low_score, 5.5)
+        self.assertGreater(high_score, 8.5)
 
 
 if __name__ == "__main__":
