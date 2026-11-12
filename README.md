@@ -41,8 +41,16 @@ served an "undeclared automated tool" page). Responses are disk-cached for
 
 - **Sub-scores (business / value / moat):** each metric is mapped to 0–10 by
   piecewise-linear interpolation between the anchor points in
-  `config/scoring.yaml`, then combined by the config weights (weights
-  renormalise over present metrics; exclusions are listed in `data_quality`).
+  `config/scoring.yaml`, then combined by the config weights. Missing-leg
+  policy (`missing_policy` in `config/scoring.yaml`, V5.4): **Business —
+  no leg is optional: a missing sub-score scores 0 at its full weight,
+  with two exceptions that still renormalise — interest coverage
+  missing because no interest expense is reported, and net-cash /
+  leverage missing because debt cannot be determined. Value — trailing P/E and FCF yield score 0 only
+  when missing because the filer is unprofitable (optional, config can
+  disable it); DCF upside and forward buyback yield still renormalise.
+  Moat renormalises.** Zero-scored legs stay listed as missing in
+  `data_quality` and are also listed under `zero_scored_missing_*`.
 - **Through-cycle rule:** margin *levels* are scored on the **5-year median**,
   not the latest year, so a cyclical peak year cannot max a score. Margin
   *stability* (5-year gross-margin stdev) is its own sub-score.

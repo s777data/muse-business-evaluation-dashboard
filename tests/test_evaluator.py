@@ -8,7 +8,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.evaluator.scoring import (interpolate, concentration_score, score_section,
                                    cheapness_percentile, relative_ev_to_sales,
                                    apply_buyback_overvaluation_cap,
-                                   growth_band_score, gav_label, gav_code)
+                                   growth_band_score, gav_label, gav_code,
+                                   business_zero_exclusions, is_unprofitable,
+                                   value_zero_metrics)
 from src.evaluator.buybacks import extract_buyback
 from src.evaluator import prices as pricesmod
 from src.evaluator.dcf import (fair_value, growth_path, build_wacc,
@@ -1891,6 +1893,140 @@ class TestBasicSharesFallback(unittest.TestCase):
             series, {}, self._facts(-150), self.CFG)
         self.assertFalse(prov["applied"])
         self.assertEqual(series["diluted_shares"][-1]["value"], 99)
+
+
+class TestV54MissingPolicy(unittest.TestCase):
+    """V5.4 missing-leg policy (BIG SANDY 2026-11-11, from ANGX):
+    Business — no leg optional, missing scores 0 at full weight, with
+    exactly two exceptions (interest coverage missing for no interest
+    expense; net-cash/leverage missing for undeterminable debt).
+    Value — optional zero for trailing P/E + FCF yield only when the
+    filer is unprofitable; DCF + buyback legs still renormalise."""
+
+    BIZ = {"revenue_growth_latest_pct": 25, "revenue_cagr_5y_pct": 10,
+           "gross_margin_median_5y_pct": 45, "operating_margin_median_5y_pct": 10,
+           "fcf_margin_median_5y_pct": None, "net_cash_to_revenue": 0,
+           "gross_margin_stdev_5y_pts": 10, "dilution_share_count_growth_pct": 0,
+           "leverage_debt_to_revenue_ttm": 1.0, "interest_coverage_ttm": 4}
+    # Present-leg weighted sum = 4.9625 over 0.85 of weight.
+    VAL = {"trailing_pe": None, "price_to_sales": 2, "ev_to_sales": 2,
+           "fcf_yield_latest_pct": None, "dcf_upside_pct": None,
+           "discount_from_52w_high_pct": -30, "forward_buyback_yield_pct": None,
+           "relative_ev_to_sales_percentile": 50}
+    # Present-leg weighted sum = 2.925 over 0.45 of weight.
+
+    def _biz_cfg(self):
+        return cfgmod.load_all()["scoring"]["business"]
+
+    def _val_cfg(self):
+        return cfgmod.load_all()["scoring"]["value"]
+
+    def test_business_missing_scores_zero_full_weight(self):
+        res = score_section(self._biz_cfg(), dict(self.BIZ), missing_as_zero=True)
+        self.assertEqual(res["total"], 4.96)
+        self.assertEqual(res["weights_renormalised_over"], 1.0)
+        self.assertEqual(res["zero_scored_missing_metrics"],
+                         ["fcf_margin_median_5y_pct"])
+        self.assertEqual(res["missing_metrics"], ["fcf_margin_median_5y_pct"])
+        entry = res["subscores"]["fcf_margin_median_5y_pct"]
+        self.assertEqual(entry["score"], 0.0)
+        self.assertIsNone(entry["value"])
+        self.assertTrue(entry["zero_scored_missing"])
+
+    def test_business_default_still_renormalises(self):
+        res = score_section(self._biz_cfg(), dict(self.BIZ))
+        self.assertEqual(res["total"], 5.84)
+        self.assertEqual(res["weights_renormalised_over"], 0.85)
+        self.assertEqual(res["zero_scored_missing_metrics"], [])
+
+    def test_business_all_missing_total_is_zero_not_none(self):
+        res = score_section(self._biz_cfg(), {}, missing_as_zero=True)
+        self.assertEqual(res["total"], 0.0)
+        self.assertEqual(len(res["zero_scored_missing_metrics"]), 10)
+
+    def test_exception_interest_coverage_no_interest_expense(self):
+        m = dict(self.BIZ, interest_coverage_ttm=None,
+                 interest_coverage_missing_reason="interest_expense_ttm_missing_or_nonpositive")
+        excl, applied = business_zero_exclusions(m, {"exception_interest_coverage_no_interest_expense": True,
+                                                     "exception_debt_legs_when_debt_not_determinable": True})
+        self.assertEqual(excl, {"interest_coverage_ttm"})
+        self.assertEqual(applied, ["interest_coverage_no_interest_expense"])
+        res = score_section(self._biz_cfg(), m, missing_as_zero=True,
+                            zero_exclude_metrics=excl)
+        # Coverage excluded (renormalised); FCF margin still zeroed.
+        self.assertNotIn("interest_coverage_ttm", res["subscores"])
+        self.assertEqual(res["zero_scored_missing_metrics"],
+                         ["fcf_margin_median_5y_pct"])
+        # Denominator: 1.0 - 0.075 (coverage) = 0.925; numerator 4.5125.
+        self.assertEqual(res["weights_renormalised_over"], 0.925)
+        self.assertEqual(res["total"], 4.88)
+
+    def test_no_exception_when_coverage_missing_for_oi(self):
+        m = dict(self.BIZ, interest_coverage_ttm=None,
+                 interest_coverage_missing_reason="operating_income_ttm_missing")
+        excl, applied = business_zero_exclusions(m, {})
+        self.assertEqual(excl, set())
+        self.assertEqual(applied, [])
+        res = score_section(self._biz_cfg(), m, missing_as_zero=True,
+                            zero_exclude_metrics=excl)
+        self.assertEqual(res["subscores"]["interest_coverage_ttm"]["score"], 0.0)
+
+    def test_exception_debt_legs_when_debt_not_determinable(self):
+        m = dict(self.BIZ, net_cash_to_revenue=None,
+                 leverage_debt_to_revenue_ttm=None,
+                 debt_not_determinable_fail_closed=True)
+        excl, applied = business_zero_exclusions(m, {})
+        self.assertEqual(excl, {"net_cash_to_revenue",
+                                "leverage_debt_to_revenue_ttm"})
+        self.assertEqual(applied, ["debt_legs_debt_not_determinable"])
+        res = score_section(self._biz_cfg(), m, missing_as_zero=True,
+                            zero_exclude_metrics=excl)
+        self.assertNotIn("net_cash_to_revenue", res["subscores"])
+        self.assertNotIn("leverage_debt_to_revenue_ttm", res["subscores"])
+        # FCF margin (not an exception leg) still scores 0.
+        self.assertIn("fcf_margin_median_5y_pct",
+                      res["zero_scored_missing_metrics"])
+
+    def test_value_unprofitable_zero_pe_and_fcf_only(self):
+        m = dict(self.VAL, negative_trailing_pe_not_scored=True)
+        zero = value_zero_metrics(m, ["trailing_pe", "fcf_yield_latest_pct"])
+        self.assertEqual(zero, {"trailing_pe", "fcf_yield_latest_pct"})
+        res = score_section(self._val_cfg(), m, zero_metrics=zero)
+        self.assertEqual(res["total"], 3.9)
+        self.assertEqual(res["weights_renormalised_over"], 0.75)
+        # DCF + buyback stay excluded/renormalised — not zero-scored.
+        self.assertNotIn("dcf_upside_pct", res["subscores"])
+        self.assertNotIn("forward_buyback_yield_pct", res["subscores"])
+        self.assertEqual(sorted(res["zero_scored_missing_metrics"]),
+                         ["fcf_yield_latest_pct", "trailing_pe"])
+
+    def test_value_profitable_keeps_renormalise(self):
+        m = dict(self.VAL, negative_trailing_pe_not_scored=False,
+                 eps_used_for_trailing_pe=12.0, net_income_ttm=5e8)
+        self.assertFalse(is_unprofitable(m))
+        self.assertEqual(value_zero_metrics(
+            m, ["trailing_pe", "fcf_yield_latest_pct"]), set())
+        res = score_section(self._val_cfg(), m)
+        self.assertEqual(res["total"], 6.5)
+
+    def test_value_unprofitable_via_net_income(self):
+        m = dict(self.VAL, eps_used_for_trailing_pe=None, net_income_ttm=-5e6)
+        self.assertTrue(is_unprofitable(m))
+        self.assertEqual(value_zero_metrics(
+            m, ["trailing_pe", "fcf_yield_latest_pct"]),
+            {"trailing_pe", "fcf_yield_latest_pct"})
+
+    def test_missing_policy_config_shape(self):
+        policy = cfgmod.load_all()["scoring"]["missing_policy"]
+        self.assertTrue(policy["business"]["missing_as_zero"])
+        self.assertTrue(policy["business"]
+                        ["exception_interest_coverage_no_interest_expense"])
+        self.assertTrue(policy["business"]
+                        ["exception_debt_legs_when_debt_not_determinable"])
+        vp = policy["value"]["unprofitable_missing_as_zero"]
+        self.assertTrue(vp["enabled"])
+        self.assertEqual(vp["metrics"],
+                         ["trailing_pe", "fcf_yield_latest_pct"])
 
 
 if __name__ == "__main__":
